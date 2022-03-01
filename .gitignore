@@ -1,0 +1,55 @@
+## compile
+*.a            #ignore all .a files
+*.la
+#!qstack.a      #except qstack.a
+build/
+dpdk/
+qstack/reference/qingyun
+qstack/lib/
+qstack/include/
+qcoroutine/lib/
+qcoroutine/include/
+mempool/lib/
+mempool/include/
+x86_64-native-linuxapp-gcc/
+examples/
+!scripts/examples
+dpdk-iface-kmod/
+*.o
+*.lo
+*.so
+*.ko
+*.d
+*.log
+*.Po
+*.Plo
+*.swp
+id
+iss
+apps/lighttpd-1.4.32/
+#!*.d/
+apps/lighttpd-1.4.32/src/qstack/
+./apps/lighttpd-1.4.32/src/config/m-lighttpd.conf
+apps/redis-4.0.10
+
+apps/nginx-1.16.1/objs/Makefile
+apps/nginx-1.16.1/objs/autoconf.err
+apps/nginx-1.16.1/objs/nginx
+apps/nginx-1.16.1/objs/ngx_auto_config.h
+## logs and temp files
+tools/src/pcap-process/*.pcap
+tags
+core.*
+!core.c
+!core.sh
+err*
+tmp
+test
+*.out
+*.core
+*.tmp
+Err
+out
+
+## soft links
+*-lnk
