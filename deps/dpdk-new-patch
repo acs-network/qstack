@@ -1,0 +1,93 @@
+From 7ea50c5a9b257c04ec7d036747164b9b1469047e Mon Sep 17 00:00:00 2001
+From: zhangzhao <zhangzhao@ict.ac.cn>
+Date: Tue, 29 Mar 2022 17:21:55 +0800
+Subject: [PATCH 2/2] add shenyifan ldflag.txt 	modified:  
+ ../drivers/net/failsafe/Makefile 	modified:  
+ ../lib/librte_mbuf/rte_mbuf.h 	modified:   ../mk/rte.app.mk 	modified:  
+ ../mk/rte.cpuflags.mk
+
+---
+ drivers/net/failsafe/Makefile |  2 +-
+ lib/librte_mbuf/rte_mbuf.h    | 25 +++++++++++++++++++++++++
+ mk/rte.app.mk                 |  5 +++++
+ mk/rte.cpuflags.mk            |  2 ++
+ 4 files changed, 33 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/net/failsafe/Makefile b/drivers/net/failsafe/Makefile
+index bd2f019..b628141 100644
+--- a/drivers/net/failsafe/Makefile
++++ b/drivers/net/failsafe/Makefile
+@@ -64,7 +64,7 @@ CFLAGS += -D_DEFAULT_SOURCE
+ CFLAGS += -D_XOPEN_SOURCE=700
+ CFLAGS += $(WERROR_FLAGS)
+ CFLAGS += -Wno-strict-prototypes
+-CFLAGS += -pedantic
++#CFLAGS += -pedantic
+ LDLIBS += -lrte_eal -lrte_mbuf -lrte_mempool -lrte_ring
+ LDLIBS += -lrte_ethdev -lrte_net -lrte_kvargs
+ LDLIBS += -lrte_bus_vdev
+diff --git a/lib/librte_mbuf/rte_mbuf.h b/lib/librte_mbuf/rte_mbuf.h
+index f247e43..6d7ffa6 100644
+--- a/lib/librte_mbuf/rte_mbuf.h
++++ b/lib/librte_mbuf/rte_mbuf.h
+@@ -562,6 +562,31 @@ struct rte_mbuf {
+ 	/** Sequence number. See also rte_reorder_insert(). */
+ 	uint32_t seqn;
+ 
++
++    /* the following is defined by shenyifan */
++    uint8_t mbuf_state:4;
++    uint8_t priority:1;
++	uint8_t holding:1;
++	uint8_t op_p:2;
++    uint8_t score;
++    uint16_t payload_len;
++    uint32_t tcp_seq;
++    struct rte_mbuf *buf_next;
++
++	RTE_STD_C11
++	union {	/**< debug info */
++		void *q_ts;	/**< ts for request processing stages*/
++		uint64_t mbuf_ts;	/**< used for single interval test */
++//		uint64_t acount; /**< Allow 8-byte userdata on 32-bit */
++		struct {
++			uint32_t stream_id;
++			struct { // mbuf operation trace
++				uint8_t last_operation:4; 
++				uint8_t last_core:4;	/**< last option core*/
++			} op_trace[4];
++		};
++	};
++
+ } __rte_cache_aligned;
+ 
+ /**< Maximum number of nb_segs allowed. */
+diff --git a/mk/rte.app.mk b/mk/rte.app.mk
+index 0b00104..756efa4 100644
+--- a/mk/rte.app.mk
++++ b/mk/rte.app.mk
+@@ -316,6 +316,11 @@ O_TO_EXE = $(LD) -o $@ $(OBJS-y) \
+ 	$(LDLIBS) $(LDFLAGS) $(LDFLAGS_$(@)) $(EXTRA_LDFLAGS) \
+ 	$(MAPFLAGS)
+ endif
++#the follow three lines was added by shenyifan
++$(shell if [ ! -d ${RTE_SDK}/${RTE_TARGET}/lib ]; then mkdir ${RTE_SDK}/${RTE_TARGET}/lib; fi)
++LINKER_FLAGS = $(call linkerprefix,$(LDLIBS))
++$(shell echo ${LINKER_FLAGS} > ${RTE_SDK}/${RTE_TARGET}/lib/ldflags.txt)
++
+ O_TO_EXE_STR = $(subst ','\'',$(O_TO_EXE)) #'# fix syntax highlight
+ O_TO_EXE_DISP = $(if $(V),"$(O_TO_EXE_STR)","  LD $(@)")
+ O_TO_EXE_CMD = "cmd_$@ = $(O_TO_EXE_STR)"
+diff --git a/mk/rte.cpuflags.mk b/mk/rte.cpuflags.mk
+index 6071313..8a16513 100644
+--- a/mk/rte.cpuflags.mk
++++ b/mk/rte.cpuflags.mk
+@@ -113,3 +113,5 @@ space:= $(empty) $(empty)
+ CPUFLAGSTMP1 := $(addprefix RTE_CPUFLAG_,$(CPUFLAGS))
+ CPUFLAGSTMP2 := $(subst $(space),$(comma),$(CPUFLAGSTMP1))
+ CPUFLAGS_LIST := -DRTE_COMPILE_TIME_CPUFLAGS=$(CPUFLAGSTMP2)
++$(shell echo ${MACHINE_CFLAGS} > ${RTE_SDK}/${RTE_TARGET}/include/cflags.txt)
++
+-- 
+1.8.3.1
+

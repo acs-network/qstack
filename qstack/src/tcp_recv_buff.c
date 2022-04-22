@@ -212,19 +212,6 @@ rb_put(qstack_t qstack, tcp_stream_t stream, mbuf_t mbuf)
 		}
 	}
 #endif
-#if INSTACK_TLS
-	if (stream->is_ssl == 1) {
-		// the seq will be always mergeable
-		if (mbufq_enqueue(&buff->merged_q, mbuf)) {
-			ret = 1;
-		} else {
-			TRACE_EXCP("failed to add ssl mbuf %p with seq %u to rcvbuf: "
-					"full merged_q @ Stream %d\n", 
-					mbuf, mbuf->tcp_seq, stream->id);
-			return FAILED;
-		}
-	} else 
-#endif
 	if (mbuf->tcp_seq == buff->merged_next) {
 		if (mbufq_enqueue(&buff->merged_q, mbuf)) {
 			ret = 1;
@@ -277,11 +264,6 @@ try_get_high_mbuf(uint8_t core_id, rcv_buff_t buff, uint8_t is_ssl)
 				// the mbuf from high-pri queue is also the head of 
 				// merged_queue (the first mbuf ready to be received)
 				if (mbufq_dequeue(&buff->merged_q)) {
-#if INSTACK_TLS
-					if (is_ssl) {
-						buff->head_seq += get_cipher_len(mbuf, mbuf->payload_len);
-					} else 
-#endif
 					{
 						buff->head_seq += mbuf->payload_len;
 					}
@@ -307,11 +289,6 @@ try_get_merged_mbuf(uint8_t core_id, rcv_buff_t buff, uint8_t is_ssl)
 	while (mbuf = mbufq_dequeue(&buff->merged_q)) {
 		// update the head_seq first, no matter whether the mbuf has 
 		// been processed
-#if INSTACK_TLS
-		if (is_ssl) {
-			buff->head_seq += mbuf_get_tcp_payload_len(mbuf);
-		} else 
-#endif
 		{
 			buff->head_seq += mbuf->payload_len;
 		}
@@ -342,28 +319,14 @@ rb_get(uint8_t core_id, tcp_stream_t stream)
 	mbuf_t mbuf = NULL;
 	
 #ifdef PRIORITY_RECV_BUFF
-	#if INSTACK_TLS
-	mbuf = try_get_high_mbuf(core_id, buff, stream->is_ssl);
-	if (!mbuf) {
-		mbuf = try_get_merged_mbuf(core_id, buff, stream->is_ssl);
-	}
-	#else
 	mbuf = try_get_high_mbuf(core_id, buff, 0);
 	if (!mbuf) {
 		mbuf = try_get_merged_mbuf(core_id, buff, 0);
 	}
-	#endif
 #else
 	mbuf = mbufq_dequeue(&buff->merged_q);
 	if (mbuf) {
-	#if INSTACK_TLS
-		if (stream->is_ssl) {
-			buff->head_seq += get_cipher_len(mbuf, mbuf->payload_len);
-		} else 
-	#endif
-		{
 			buff->head_seq += mbuf->payload_len;
-		}
 	}
 #endif
 	if (mbuf && NULL == mbuf_get_payload_ptr(mbuf)) {

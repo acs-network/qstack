@@ -80,7 +80,6 @@ static inline g_ctx_t get_global_ctx();
 
 #include "qepoll.h"
 #include "socket.h"
-#include "ssl.h"
 #include "tcp_stream.h"
 #include "io_module.h"
 #include "stream_queue.h"
@@ -314,7 +313,6 @@ struct qstack_context_global
 	qcore_t	core_contexts[MAX_CORE_NUM];
 	qapp_t app_contexts[MAX_APP_NUM]; // stores all qapp with app_id as key
 	qstack_t stack_contexts[MAX_STACK_NUM];
-	ssl_mgt_t g_ssl_mgt;
 
 	// members frequently used (read)
 	struct qing_hash * stream_ht[MAX_STACK_NUM];

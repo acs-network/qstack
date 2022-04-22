@@ -189,6 +189,21 @@ We test iotepserver with 10,368,000 concurrent TCP connections on machines of ``
 
 ## Release note
 
+### April 22, 2022
+* **Updated global macros.**
+    
+    The following two macros in ``qstack/src/include/global_macro.h`` can cause fatal errors, and they are disabled now:
+  - ``SCAN_INACTIVE_SOCKET``
+  - ``ACTIVE_DROP_EMULATE``
+
+* **Updated dpdk-patch and dpdk_module.**
+
+    The dpdk-patch was simplified, so that QStack doesn't modify DPDK too much now. 
+
+* **Added MAC and IP check when receiving a packet.**
+
+* **Removed uncompleted in-stack SSL.**
+
 ### V1.0
  - flexible thread allocation and arrangement
  - packet-level priority support at driver layer

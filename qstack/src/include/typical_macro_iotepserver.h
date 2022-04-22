@@ -32,7 +32,7 @@
 #define STATISTIC_STATE_DETAIL			1	///< detail statistic
 #define EXTRA_RECV_CHECK		        2	
 /* number of workers (redis-server) per server thread */
-#define WORKER_PER_SERVER 				4	
+#define WORKER_PER_SERVER 				4
 #define STATISTIC_FORWARD_BUFF_LEN		
 #define IOTEPSERVER_SETTINGS
 /******************************************************************************/
@@ -41,6 +41,10 @@
 	#if 1 // for 6130 
 		#define PHYSOCK_NUM		2
 		#define CORE_PER_SOCK	16
+
+//	#if 1 // for 5118
+//		#define PHYSOCK_NUM		2
+//		#define CORE_PER_SOCK	12
 static inline void
 core_map_init(char *core_map)
 {

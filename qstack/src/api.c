@@ -265,7 +265,6 @@ q_listen(qapp_t app, int sockid, int backlog)
 	listener->socket->epoll |= Q_EPOLLIN;
 	listener->port = ntohs(listener->socket->saddr.sin_port);
 	listener->accept_point = 0;
-	set_ssl_listener(listener);
 	
 	for (i=0; i<CONFIG.num_servers; i++) {
 		streamq_init(&listener->acceptq[i],CONFIG.num_stacks, backlog);
@@ -560,15 +559,6 @@ q_close(qapp_t app, int sockid)
 				"by the application @ Stream %d\n", 
 				cur_stream->id);
 	}
-#if INSTACK_TLS
-	if (cur_stream->is_ssl) {
-		ret = qssl_close_wait(app->core_id, cur_stream->ssl);
-		if (ret != TRUE) {
-			return TRUE;
-		}
-		cur_stream->ssl = NULL;
-	}
-#endif
 	if (cur_stream->state == TCP_ST_ESTABLISHED) {
 		TRACE_CLOSE("q_close() is activly called "
 				"by the application @ Stream %d\n", 

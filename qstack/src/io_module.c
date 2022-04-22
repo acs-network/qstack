@@ -326,6 +326,9 @@ unit_test_loopback_mainloop()
 /******************************************************************************/
 /* functions */
 /******************************************************************************/
+
+	
+	
 uint8_t
 io_init()
 {
@@ -339,8 +342,11 @@ io_init()
     for (ret = 0; ret < cpu; ret++){
         cpumask = (cpumask | (1 << ret));
     }
+
     sprintf(cpumaskbuf, "%X", cpumask);
     sprintf(mem_channels, "%d", num_mem_ch);
+
+
     char *argv[] = {"",
             "-c",
             cpumaskbuf,
@@ -349,18 +355,22 @@ io_init()
             "--proc-type=auto",
             ""
     };
+
+
     const int argc = 6;
     ret = rte_eal_init(argc, argv);
     if (ret < 0) {
         TRACE_ERR("rte_eal_init() failed!\n");
         exit(0);
     }
+
+
 #if !LOOP_BACK_TEST_MODE
     dpdk_load_module();
     int core_id = 0;
     for(core_id = 0; core_id < MAX_DPC_THREAD;core_id++){
         dpdk_init_handle(core_id);
-    }
+     }
     return SUCCESS;
 /*init io module*/
 #else

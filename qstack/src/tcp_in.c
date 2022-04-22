@@ -300,6 +300,16 @@ syn_packet_filter(qstack_t qstack, uint32_t ip, uint16_t port)
 	struct tcp_listener *ret = get_global_ctx()->listeners->table[0];
 //	ret = (struct tcp_listener *)ListenerHTSearch(
 //			get_global_ctx()->listeners, &tcph->dest);
+	
+	if (ip != CONFIG.eths[0].ip_addr) {
+		ret = NULL;
+		TRACE_EXCP("SYN packet with wrong IP address!\n");
+	}
+	if (ntohs(port) != ret->port) {
+		ret = NULL;
+		TRACE_EXCP("SYN packet with wrong TCP port %d. Expected:%d\n", 
+				ntohs(port), ret->port);
+	}
 	return ret;
 }
 
@@ -711,11 +721,6 @@ Handle_TCP_ST_SYN_RCVD (qstack_t qstack, uint32_t cur_ts,
 		/* update listening socket */
 		// TODO: listener filter
 		struct tcp_listener *listener = get_global_ctx()->listeners->table[0];
-#if INSTACK_TLS
-		if (listener->is_ssl) {
-			set_ssl_stream(cur_stream, listener->ssl_ctx);
-		} else 
-#endif
 		{
 			_raise_accept_event(qstack, cur_stream, cur_ts);
 		}
@@ -1297,22 +1302,6 @@ process_tcp_payload(qstack_t qstack, tcp_stream_t cur_stream,
 				, cur_stream->id, seq, payloadlen, cur_stream->rcv_nxt);
 		return FAILED;
 	}
-#if INSTACK_TLS
-	if (cur_stream->is_ssl) {
-		/* process TLS as TCP payload */
-		if (mbuf->tcp_seq == rcvvar->rcvbuf.merged_next && 
-				rcvvar->rcv_wnd >= payloadlen) {
-			cur_stream->rcvvar.rcvbuf.merged_next += payloadlen;
-			ret = process_ssl_packet(qstack, cur_stream, mbuf, 
-					mbuf_get_payload_ptr(mbuf), payloadlen);
-			if (ret != SUCCESS) {
-				// the packet will not be put into rcv_buf
-				cur_stream->rcvvar.rcvbuf.head_seq += 
-						mbuf_get_tcp_payload_len(mbuf);
-			}
-		}
-	} else 
-#endif
 	{
 		/* process normal TCP payload */
 		prev_rcv_nxt = cur_stream->rcv_nxt;
@@ -1383,11 +1372,6 @@ process_tcp_payload(qstack_t qstack, tcp_stream_t cur_stream,
 		}
 #endif
 		if (event_num>0) {
-#if INSTACK_TLS
-			if (!cur_stream->ssl)
-				/* do not raise evnet for low-pri ssl packet, it has not been 
-				 * put into the receive buffer, but in the decryption queue */
-#endif
 				_raise_read_event(qstack, cur_stream, cur_ts, 0);
 		}
 	}

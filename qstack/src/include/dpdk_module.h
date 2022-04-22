@@ -1,33 +1,3 @@
-/*
-* mTCP source code is distributed under the Modified BSD Licence.
-* 
-* Copyright (C) 2015 EunYoung Jeong, Shinae Woo, Muhammad Jamshed, Haewon Jeong, 
-* Sunghwan Ihm, Dongsu Han, KyoungSoo Park
-* 
-* All rights reserved.
-* 
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions are met:
-*     * Redistributions of source code must retain the above copyright
-*       notice, this list of conditions and the following disclaimer.
-*     * Redistributions in binary form must reproduce the above copyright
-*       notice, this list of conditions and the following disclaimer in the
-*       documentation and/or other materials provided with the distribution.
-*     * Neither the name of the <organization> nor the
-*       names of its contributors may be used to endorse or promote products
-*       derived from this software without specific prior written permission.
-* 
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-* ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-* WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-* DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
-* DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-* (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-* LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-* ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-* SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
 
 /**
  * @file dpdk_module.h
@@ -58,7 +28,7 @@
 #include <rte_ethdev.h> 
 #include <rte_cycles.h>
 #include <rte_errno.h>
-#include <rte_circular_queue.h>
+//#include <rte_circular_queue.h>
 /* for close */
 #include <unistd.h>
 
@@ -88,7 +58,7 @@
 #define MEMPOOL_CACHE_SIZE        256
 #define RX_IDLE_TIMEOUT            1    /* in micro-seconds */
 #define RX_IDLE_THRESH            64
-
+//#define RTE_RING_T 1
 /*
  * RX and TX Prefetch, Host, and Write-back threshold values should be
  * carefully set for optimal performance. Consult the network
@@ -112,9 +82,6 @@
 #define MAX_PKT_TX_BURST            64/*MAX 128*/
 #define MAX_PKT_RX_BURST            128/*MAX 128*/
 
-#define LOOP_BACK_TEST 0
-
-#define TIME_CHECK 0
 /*
  * Configurable number of RX/TX ring descriptors
  */
@@ -122,11 +89,17 @@
 #define RTE_TEST_TX_DESC_DEFAULT    2048
 
 #define MAX_FDIR_RULE_NUM 2048
-/******************************************************************************/
-//#define RTE_RING_T 1
+
+
+/*for debug */
+#define LOOP_BACK_TEST 0
+#define CHECK_SUM_DEBUG 0
+#define DEBUG_MBUF_NOFREE_BUFF 0
+#define RX_FREE_NOATOMIC 1
+/*debug define over */
+
 static uint16_t nb_rxd =         RTE_TEST_RX_DESC_DEFAULT;
 static uint16_t nb_txd =         RTE_TEST_TX_DESC_DEFAULT;
-
 /*----------------------------------------------------------------------------*/
 
 /* packet memory pools for storing packet bufs */
@@ -185,31 +158,18 @@ struct dpdk_private_context
 	int swget_fail_num;
 	int uwfree_num;
 	int swfree_num;
-
-    //debug over
+    int rx_free_num;
+    //for debug information over
 	
-#ifndef RTE_RING_T
     cirq_t rh_mbufs;   ///<  high level receive queue ,this is circle queue
     cirq_t rl_mbufs;   ///<  low level receive queue ,this is circle queue
     cirq_t th_mbufs;   ///<  high level tx queue ,this is circle queue
     cirq_t tl_mbufs;   ///<  low level tx queue ,this is circle queue
 
-
     n21q_t free_queue;  ///< queue for free packet across mutil cpu queue,this is a "n to 1" queue
     n21q_t nofree_queue;  ///< queue for free packet which with payload across mutil cpu,this is a "n to 1" queue
     n21q_t rxfree_queue;   ///< queue for free packet which is a receive mbuf from driver across mutil cpu, this is a "n to 1" queue     
 
-#else
-    struct rte_ring *rh_mbufs[RTE_MAX_ETHPORTS];
-    struct rte_ring *rl_mbufs[RTE_MAX_ETHPORTS];
-    struct rte_ring *tl_mbufs[RTE_MAX_ETHPORTS];
-    struct rte_ring *th_mbufs[RTE_MAX_ETHPORTS];
-    
-    struct rte_ring *free_queue[MAX_RUN_CPUS];
-    struct rte_ring *nofree_queue[MAX_RUN_CPUS];
-    struct rte_ring *rxfree_queue[MAX_RUN_CPUS];
-
-#endif
 
 } __rte_cache_aligned;
 
@@ -568,7 +528,6 @@ static inline void dpdk_get_start_ave_time(struct dpdk_private_context *dpc)
 #endif
 } 
 
-
 static inline int dpdk_get_end_ave_time(struct dpdk_private_context *dpc)
 {
 
@@ -590,5 +549,7 @@ static inline int dpdk_get_end_ave_time(struct dpdk_private_context *dpc)
 #endif
 } 
 
+int dpdk_recv_num_thread_info(int coreid);
+int dpdk_tx_num_thread_info(int coreid);
 
 #endif  //!__QING_DPDK_FUNC

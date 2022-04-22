@@ -29,11 +29,8 @@
 #include <sched.h>  
 #include <errno.h>
 /******************************************************************************/
-//#include "typical_macro_ssl.h"
 //#include "typical_macro_echo.h"
 #include "typical_macro_iotepserver.h"
-//#include "typical_macro_nginx.h"
-//#include "typical_macro_client.h"
 /******************************************************************************/
 /* default macros */
 #ifndef MAX_CORE_NUM
@@ -171,7 +168,7 @@
 										*/
 #endif
 #ifndef SCAN_INACTIVE_SOCKET
-	#define SCAN_INACTIVE_SOCKET			1
+	#define SCAN_INACTIVE_SOCKET			0
 #endif
 /*----------------------------------------------------------------------------*/
 // statistic
@@ -231,7 +228,7 @@
 #endif
 
 #ifndef ACTIVE_DROP_EMULATE
-	#define ACTIVE_DROP_EMULATE				1
+	#define ACTIVE_DROP_EMULATE				0
 	#if ACTIVE_DROP_EMULATE
 		#define ACTIVE_DROP_RATE				100	///< reciprocal of rate	
 //		#define DROP_UNIFORM	///< drop every packet
@@ -257,10 +254,6 @@
 	#define UNSHARED_APP_MODE				1	///< at most one app on every core
 #endif
 
-#ifndef INSTACK_TLS
-	#define INSTACK_TLS						0	///< disable ssl support
-#endif
-	
 #define SOCK_ALLOC_STACK_ONLY 	1
 #define SOCK_ALLOC_APP_ONLY		2
 #define SOCK_ALLOC_ALL			3

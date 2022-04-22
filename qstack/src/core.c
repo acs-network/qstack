@@ -567,10 +567,10 @@ __print_network_state()
 			"NIC recv drop:\t\t%16u\n"
 	#endif
 	#if STATISTIC_STATE_DETAIL
-//			"RX ring mbuf allocation failures :\t\t%16u\n"
+			"RX ring mbuf allocation failures :\t\t%16u\n"
 //			"NIC recv drop time test:\t\t%16u\n"
-//			"NIC tx send:\t\t%16u\n"
-//			"NIC tx err:\t\t%16u\n"
+			"NIC tx send:\t\t%16u\n"
+			"NIC tx err:\t\t%16u\n"
 			"==========Mbuf alloc and free:\n"
 //			"uw alloc time:\t\t%16u\n"
 //			"sw alloc time:\t\t%16u\n"
@@ -614,10 +614,10 @@ __print_network_state()
 			, io_get_rx_err(0)
 	#endif
 	#if STATISTIC_STATE_DETAIL
-//			, io_get_rx_nobuf_err(0)
+			, io_get_rx_nobuf_err(0)
 //			, io_get_rx_last_time(0)
-//			, io_get_tx_out(0)
-//			, io_get_tx_err(0)
+			, io_get_tx_out(0)
+			, io_get_tx_err(0)
 			
 			// mbuf alloc and free
 //			, dpdk_total_uwget_num()
@@ -802,9 +802,6 @@ qstack_main_loop(qstack_t qstack)
 		if (recv_check_timeout_test(qstack, 1)) {
 			TRACE_EXCP("rcv_num while timeout: %d\n", i);
 		}
-#if INSTACK_TLS
-		handle_cryption_rsp(qstack);
-#endif
 
 #if EXTRA_RECV_CHECK >= 2
 		ret = io_recv_check(qstack, 0, 0);
@@ -931,7 +928,6 @@ qstack_init(int stack_num)
 
 	TRACE_LOG("start global context initialization\n");
 	gctx_init();
-	init_ssl_mgt();
 	//io_get_rxtx_ten(NULL); // polling check core start
 	srand(time(NULL));
 

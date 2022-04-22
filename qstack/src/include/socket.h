@@ -97,14 +97,13 @@ enum socket_type
 struct tcp_listener
 {
 	int sockid;
-	uint16_t port;
+	uint16_t port;			// in hardware sequence
 	uint16_t is_ssl:1;
 	socket_t socket;
 
 	int backlog;
 	int accept_point;		// round robin for accept event
 	tcp_stream_queue acceptq[MAX_SERVER_NUM];
-	q_SSL_CTX *ssl_ctx;
 //	TAILQ_ENTRY(tcp_listener) he_link;	/* hash table entry link */
 };
 

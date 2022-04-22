@@ -1,45 +1,3 @@
-/*
-* mTCP source code is distributed under the Modified BSD Licence.
-* 
-* Copyright (C) 2015 EunYoung Jeong, Shinae Woo, Muhammad Jamshed, Haewon Jeong, 
-* Sunghwan Ihm, Dongsu Han, KyoungSoo Park
-* 
-* All rights reserved.
-* 
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions are met:
-*     * Redistributions of source code must retain the above copyright
-*       notice, this list of conditions and the following disclaimer.
-*     * Redistributions in binary form must reproduce the above copyright
-*       notice, this list of conditions and the following disclaimer in the
-*       documentation and/or other materials provided with the distribution.
-*     * Neither the name of the <organization> nor the
-*       names of its contributors may be used to endorse or promote products
-*       derived from this software without specific prior written permission.
-* 
-* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-* ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-* WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-* DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
-* DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-* (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-* LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-* ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-* SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
-/*
-  * dpdk_module
-  *	An implementation of interface between qingyun stack and dpdk driver
-  * qingyun TCP/IP stack can recv/send/alloc/release mbuf by using func in this module 
-  * 
-  * Based on dpdk code.
-  *
-  * Authors: zhangzhao
-  *
-*/
-
-
 /* for io_module_func def'ns */
 //#include "io_module.h"
 /******************************************************************************/
@@ -54,13 +12,16 @@
 
 /******************************************************************************/
 /* user defined priority */
+/* add by shenyifan */
 int default_driver_pri_filter(mbuf_t mbuf)
 {
-	return 0;
+	    return 0;
 }
 
 int(*driver_pri_filter)(mbuf_t mbuf) = default_driver_pri_filter;
 /******************************************************************************/
+
+
 static struct dpdk_private_context *dpc_list[MAX_RUN_CPUS];
 
 static const struct rte_eth_conf port_conf_default = {
@@ -210,38 +171,38 @@ dpdk_init_handle(int cpu)
     dpc->pktmbuf_alloc_pool = pktmbuf_alloc_pool[cpu]; ///<  this is for userspace  alloc 
     dpc->pktmbuf_clone_pool = pktmbuf_clone_pool[cpu]; //< this is for send packets with payload 
     dpc->pktmbuf_loopback_pool = pktmbuf_loopback_pool[cpu]; //< this is loopback test  
-       
-    dpc->rh_mbufs = (cirq_t)calloc(1, sizeof(struct circular_queue));
-    cirq_init(dpc->rh_mbufs, MAX_FLOW_PSTACK);  ///< init high level recevie queue  
-
+    
+	dpc->rh_mbufs = (cirq_t)calloc(1, sizeof(struct circular_queue));
+    cirq_init(dpc->rh_mbufs, MAX_FLOW_PSTACK);  
+    TRACE_INFO("init high level recevie queue for dpc->cpu %d address %p",dpc->cpu,dpc->rh_mbufs); 
+	
     dpc->rl_mbufs = (cirq_t)calloc(1, sizeof(struct circular_queue));
-    cirq_init(dpc->rl_mbufs, MAX_FLOW_PSTACK);  ///< init low level receive queue
+    cirq_init(dpc->rl_mbufs, MAX_FLOW_PSTACK);  
+    TRACE_INFO("init low level receive queue for dpc->cpu %d address %p",dpc->cpu,dpc->rl_mbufs); 
 
     dpc->th_mbufs = (cirq_t)calloc(1, sizeof(struct circular_queue));
     cirq_init(dpc->th_mbufs, MAX_FLOW_PSTACK); ///< init high level tx queue
+    TRACE_INFO("init high level tx queue for dpc->cpu %d address %p",dpc->cpu,dpc->th_mbufs); 
 
     dpc->tl_mbufs = (cirq_t)calloc(1, sizeof(struct circular_queue));
     cirq_init(dpc->tl_mbufs, MAX_FLOW_PSTACK); ///< init low level tx queue
-
-
+    TRACE_INFO("init low level tx queue for dpc->cpu %d address %p",dpc->cpu,dpc->tl_mbufs); 
     /* **
      *  init  arcoss mutil cpus free queue
      * */
 
 
     dpc->free_queue = (n21q_t)calloc(1, sizeof(struct n21_queue));  ///< this is "n to 1" queue
-    n21q_init(dpc->free_queue, CONFIG.num_cores, 200000);    
+    n21q_init(dpc->free_queue, CONFIG.num_cores, MAX_FLOW_PSTACK / 20);    
 
 
     dpc->nofree_queue = (n21q_t)calloc(1, sizeof(struct n21_queue));  ///< this is "n to 1" queue
-    n21q_init(dpc->nofree_queue, CONFIG.num_cores, 200000);
+    n21q_init(dpc->nofree_queue, CONFIG.num_cores, MAX_FLOW_PSTACK / 20);
 
 
     dpc->rxfree_queue = (n21q_t)calloc(1, sizeof(struct n21_queue)); ///< this is "n to 1" queue
-    n21q_init(dpc->rxfree_queue, CONFIG.num_cores, 300000);
+    n21q_init(dpc->rxfree_queue, CONFIG.num_cores, MAX_FLOW_PSTACK / 20);
 
-//    dpc->tx_num = 0;
-//    dpc->rx_num = 0;
 }
 /*----------------------------------------------------------------------------*/
 int
@@ -252,14 +213,31 @@ dpdk_link_devices(struct qstack_context *ctxt)
     return 0;
 }
 /*----------------------------------------------------------------------------*/
+
+
+int dpdk_tx_num_thread_info(int coreid)
+{
+    struct dpdk_private_context *dpc = NULL;
+    dpc = dpc_list[coreid];
+    return dpc->tx_send_check;
+} 
+
+int dpdk_recv_num_thread_info(int coreid)
+{
+    struct dpdk_private_context *dpc = NULL;
+    dpc = dpc_list[coreid];
+    return dpc->rx_num;
+}
+
+
 int dpdk_total_recv_num()
 {
     int i = 0;
     uint32_t sum = 0;
-    struct dpdk_private_context *free_dpc = NULL;
+    struct dpdk_private_context *dpc = NULL;
     for(i = 0; i<MAX_DPC_THREAD;i++){
-        free_dpc = dpc_list[i];
-        sum = sum + free_dpc->rx_num;
+    	dpc = dpc_list[i];
+        sum = sum + dpc->rx_num;
     }
     //printf("total recv num is: %d \n",sum);
     return sum;
@@ -272,7 +250,7 @@ int dpdk_total_free_num()
     struct dpdk_private_context *free_dpc = NULL;
     for(i = 0; i<MAX_DPC_THREAD;i++){
         free_dpc = dpc_list[i];
-    //    sum = sum + free_dpc->rx_free_num;
+        sum = sum + free_dpc->rx_free_num;
     //    printf("core %d free num is: %d \n",i,free_dpc->rx_free_num);
     //    printf("core %d func free num is: %d \n",i,free_dpc->func_free_num);
     }
@@ -280,7 +258,6 @@ int dpdk_total_free_num()
     return sum;
 }
 
-//dpdk_release_pkt(struct qstack_context *ctxt,int ifidx,struct rte_mbuf *pkt_data)
 void
 dpdk_release_pkt(int core_id, int ifidx, struct rte_mbuf *pkt_data)
 {
@@ -293,22 +270,17 @@ dpdk_release_pkt(int core_id, int ifidx, struct rte_mbuf *pkt_data)
     struct rte_mbuf *m = (struct rte_mbuf*)pkt_data;        
     free_dpc = dpc_list[core_id];
     targ = pkt_data->score;
-    
     dpc = dpc_list[targ];
 
 
     if(core_id == pkt_data->score && pkt_data->pool != dpc->rx_pktmbuf_pool){
-    //    struct rte_mbuf *m = (struct rte_mbuf*)pkt_data;        
         m->payload_len = 0;//reset payload len
         if(m->pool == free_dpc->pktmbuf_alloc_pool) {
-       		//_mm_sfence();
 #if MBUF_STREAMID
-//			m->stream_id = 0;
+			m->stream_id = 0;
 #endif
 			m->udata64 = 0;
-
-			//m->alloc_t++;
-			//m->free_t++;
+			rte_wmb();
             rte_mbuf_refcnt_set(m, 1);
             dpc->uwfree_num++;
         }
@@ -319,40 +291,48 @@ dpdk_release_pkt(int core_id, int ifidx, struct rte_mbuf *pkt_data)
     {
         source = core_id;
         if(m->pool == dpc->tx_pktmbuf_pool){
+
             ret = n21q_enqueue(dpc->free_queue,source,m);
-            if(ret!=SUCCESS){
+            if(ret!=SUCCESS){ 
                 TRACE_EXIT("a free n21q enqueue fail and source core id is %d\n",source);
                 return -1;
             }
+
         }else if(m->pool == dpc->rx_pktmbuf_pool){
-#if 0
-            ret = n21q_enqueue(dpc->rxfree_queue,source,pkt_data);
-            if(ret!=SUCCESS) {
-                TRACE_EXIT("rxfree n21q enqueue fail and source core id is %d\n",source);
-                return -1;
-            }
-#else
+
 	#if MBUF_STREAMID
-//			m->stream_id = 0;
+			m->stream_id = 0;
 	#endif
+
+#if RX_FREE_NOATOMIC
+			/* if RX FREE_NOATOMIC OPEN ,use N21 queue send back mbuf to rx dpc thread */
+            do {
+			ret = n21q_enqueue(dpc->rxfree_queue,source,pkt_data);
+            	if(ret!=SUCCESS) {
+				/*if n21q queue full,this means stack thread do not have time to release mbuf in n21 queue */
+				/*try again */
+                TRACE_EXCP("rxfree n21q enqueue fail and source core id is %d\n",source);
+            	}
+			}while(ret != SUCCESS);
+#else
         	rte_pktmbuf_free(m);
-        	//TRACE_EXIT("rx add to cir free forward enqueue fail \n");
-    	//    rte_pktmbuf_free_forward(m,core_id);
 #endif
-        }else{
-            
-            rte_mbuf_refcnt_set(m, 1);
+        }else{           
 #if MBUF_STREAMID
-//			m->stream_id = 0;
+			m->stream_id = 0;
 #endif
 			m->udata64 = 0;
-        //   rte_pktmbuf_free(m);
+            rte_mbuf_refcnt_set(m, 0);
+#if DEBUG_MBUF_NOFREE_BUFF 
+			/*if try to debug nofree mbuf */
+            rte_pktmbuf_free(m);
+#else
 			ret = n21q_enqueue(dpc->nofree_queue,source,m);
             if(ret!=SUCCESS){
                 TRACE_EXIT("nofree n21q enqueue fail and source core id is %d\n",source);
                 return -1;
             }
-
+#endif
             dpc->uwfree_num++;
         }
     }
@@ -402,14 +382,7 @@ dpdk_load_module(void)
         sprintf(clone_name, "clone_name_pool-%d", lcore_id);
         
         sprintf(ring_name, "ring_name_pool-%d", lcore_id);
-  //      if(MAX_FLOW_NUM < 300000)
-  //      {
         nb_mbuf = MAX_FLOW_PSTACK >> MEM_SCALE;//CONFIG.max_concurrency / CONFIG.num_cores;//400000;
-  //      }
-  //      else
-  //      {
- //	       nb_mbuf = 300000/MAX_STACK_NUM;
-  //      }
         while(ring_count < nb_mbuf)
         {
             ring_count = ring_count * 2;
@@ -420,57 +393,14 @@ dpdk_load_module(void)
             rx_pktmbuf_pool[lcore_id] = rte_pktmbuf_pool_create_by_ops(rx_name,
                 nb_mbuf, 0, 0,
                 RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id(),"ring_mp_mc");
- //               RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id(),"ring_sp_sc");
-            if(rx_pktmbuf_pool[lcore_id] == NULL)
-            {
-                    rte_exit(EXIT_FAILURE, "Cannot init rx_pktmbuf mbuf pool and locrea is %d nb_mbuf is %d\n",lcore_id,nb_mbuf/10);
+            if(rx_pktmbuf_pool[lcore_id ] != NULL) {
+                TRACE_PROC("rx_pktmbuf_pool[%d] success and pool address is 0x%x size is %d\n",lcore_id,rx_pktmbuf_pool[lcore_id],nb_mbuf);
             }
-
-            rx_pktmbuf_pool[lcore_id]->core_id = lcore_id;
-            rx_pktmbuf_pool[lcore_id]->private_type = 1;
-            rx_pktmbuf_pool[lcore_id]->ring_num = MAX_CORE_NUM;
-            for(i = 0; i< MAX_CORE_NUM ;i++)
-            {
-                sprintf(ring_name, "ring_name_pl-%d-%d", lcore_id ,i);
-                rx_pktmbuf_pool[lcore_id]->local_ring[i] = calloc(1, sizeof(struct rte_circular_queue));
-//rte_ring_create(ring_name, ring_count, lcore_id, RING_F_SP_ENQ|RING_F_SC_DEQ);
-                if(rx_pktmbuf_pool[lcore_id]->local_ring[i] == NULL)
-                {
-                    rte_exit(EXIT_FAILURE, "Cannot init rx_pktmbuf mbuf pool's rte ring and locre is %d \n",
-                    lcore_id);
-                }
-                else
-                {
-                    rte_cirq_init(rx_pktmbuf_pool[lcore_id]->local_ring[i],ring_count);
-                }
-            }
-            //we need to add rte ring to mempool  
-            //and set private_type to 1
-
             tx_pktmbuf_pool[lcore_id] = rte_pktmbuf_pool_create_by_ops(tx_name,
                 nb_mbuf, 32, 0,
                 RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id(),"ring_sp_sc");
-
-        
-            if (rx_pktmbuf_pool[lcore_id] == NULL)
-            {
-                rte_exit(EXIT_FAILURE, "Cannot init rx_pktmbuf mbuf pool rxlcore_id is %d, errno: %d\n",
-                lcore_id,rte_errno);
-            }
-            else
-            {
-                TRACE_MEMORY("alloc rx_pktmbuf_pool[%d] success and pool address is 0x%x \n",lcore_id,rx_pktmbuf_pool[lcore_id]);
-            }
-
-
-            if (tx_pktmbuf_pool[lcore_id] == NULL)
-            {
-            rte_exit(EXIT_FAILURE, "Cannot init tx_pktmbuf_pool mbuf pool txlcore_id is %d, errno: %d\n",lcore_id,
-                 rte_errno);
-            }
-            else
-            {
-                TRACE_MEMORY("alloc tx_pktmbuf_pool[%d] success and pool address is 0x%x \n",lcore_id,tx_pktmbuf_pool[lcore_id]);
+             if(tx_pktmbuf_pool[lcore_id ] != NULL) {
+                TRACE_PROC("tx_pktmbuf_pool[%d] success and pool address is 0x%x size is %d\n",lcore_id,tx_pktmbuf_pool[lcore_id],nb_mbuf);
             }
         }
         else
@@ -479,59 +409,12 @@ dpdk_load_module(void)
             tx_pktmbuf_pool[lcore_id] = NULL;
         }
         int nb_alloc_num = 0;//MAX_FLOW_NUM/MAX_CORE_NUM;
-
-//        if(MAX_FLOW_NUM < 300000)
-//        {
         nb_alloc_num = (MAX_FLOW_NUM/CONFIG.num_stacks)>>MEM_SCALE;//CONFIG.max_concurrency / CONFIG.num_cores;//400000;
-//        }
-//        else
-//        {
-//            nb_alloc_num = 300000/MAX_STACK_NUM;
-//        }
         pktmbuf_alloc_pool[lcore_id] = rte_pktmbuf_pool_create_by_ops(alloc_name,
                  nb_alloc_num, 0, 0,
                  RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id(),"ring_sp_sc");
 
-        pktmbuf_alloc_pool[lcore_id]->private_type = 2;
-
-                 //RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id(),"ring_mp_mc");
-        if (pktmbuf_alloc_pool[lcore_id] == NULL){
-            rte_exit(EXIT_FAILURE, "Cannot init alloc mbuf pool and lcore_id is %d, errno: %d\n",lcore_id,
-                 rte_errno);
-        }
-        else
-        {
-                TRACE_MEMORY("alloc pktmbuf_pool[%d] success and pool address is 0x%x nb_mbuf/100 is %d\n",lcore_id,pktmbuf_alloc_pool[lcore_id],nb_alloc_num);
-        }
-#if 0
-        pktmbuf_clone_pool[lcore_id] = rte_pktmbuf_pool_create_by_ops(clone_name,
-                 nb_mbuf, 32, 0,
-                 RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id(),"ring_sp_sc");
-        if (pktmbuf_clone_pool[lcore_id] == NULL){
-            rte_exit(EXIT_FAILURE, "Cannot init clone mbuf pool and lcore_id is %d, errno: %d\n",lcore_id,
-                 rte_errno);
-        }
-        else
-        {
-                TRACE_MEMORY("alloc clone_pktmbuf_pool[%d] success and pool address is 0x%x \n",lcore_id,pktmbuf_clone_pool[lcore_id]);
-        }
-#else
-
         pktmbuf_clone_pool[lcore_id] = NULL;//rte_pktmbuf_pool_create_by_ops(clone_name,
-#endif
-#if 0        
-        pktmbuf_loopback_pool[lcore_id] = rte_pktmbuf_pool_create(clone_name,
-                 10000, 32, 0,
-                 RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
-        if (pktmbuf_loopback_pool[lcore_id] == NULL){
-            rte_exit(EXIT_FAILURE, "Cannot init loopback mbuf pool and lcore_id is %d, errno: %d\n",lcore_id,
-                 rte_errno);
-        }
-        else
-        {
-                TRACE_INFO("alloc loopback_pktmbuf_pool[%d] success and pool address is 0x%x \n",lcore_id,pktmbuf_loopback_pool[lcore_id]);
-        }
-#endif
     }
 
     /* Second Initialise each port */
@@ -562,8 +445,6 @@ dpdk_load_module(void)
         fflush(stdout);
 
         rte_eth_dev_info_get(portid, &dev_info);
-    //    rxconf = &dev_info.default_rxconf;
-    //    txconf = &dev_info.default_txconf;
         TRACE_PROC("=============tx offload mask is 0x%x \n============\n",dev_info.tx_offload_capa);
         TRACE_PROC("DEV_TX_OFFLOAD_VLAN_INSERT is 0x%x \n",DEV_TX_OFFLOAD_VLAN_INSERT);
         TRACE_PROC("DEV_TX_OFFLOAD_TCP_CKSUM is 0x%x \n",DEV_TX_OFFLOAD_TCP_CKSUM);
@@ -615,7 +496,7 @@ dpdk_load_module(void)
         TRACE_PROC("begin to start device !!!\n");
         /* Start device */
         //port_rss_reta_info(portid);
-        //
+
        
         fflush(stdout);
         ret = rte_eth_dev_start(portid);
@@ -627,8 +508,11 @@ dpdk_load_module(void)
             ret, (unsigned) portid);
         }
 
-       // port_rss_reta_info(portid);
+		//rte_eth_promiscuous_enable(portid);
+		//disable nic promiscuous 
+		rte_eth_promiscuous_disable(portid);
         //init fdir rule
+		//do not use in stack in this version
         for(i = 0;i < MAX_FDIR_RULE_NUM; i++)
         {
              dpdk_fdir_rules[portid][i].flow = NULL;
@@ -661,9 +545,9 @@ static inline int
 dpdk_soft_filter(struct rte_mbuf * pkt_mbuf)
 {
 #if DRIVER_PRIORITY
-	int ret = driver_pri_filter(pkt_mbuf);
-	pkt_mbuf->priority = ret;
-	return ret;
+	char *payload = mbuf_get_tcp_ptr(pkt_mbuf) + 32;
+	pkt_mbuf->priority = (pkt_mbuf->pkt_len>80 && payload[5] == 0x01);
+	return pkt_mbuf->priority;
 #else
     return 0;
 #endif
@@ -708,18 +592,19 @@ dpdk_get_tx_state(struct qstack_context *ctxt, int level, int port)
     }
     ctxt->cpu = ctxt->stack_id;
     struct dpdk_private_context *dpc = dpc_list[ctxt->stack_id];
-
+    cirq_t tx_mbufs;
     int num;
     if(level == 0)
     {
-         //low private queue        
-            num = cirq_count(dpc->tl_mbufs);
+         //low private queue   
+        tx_mbufs = dpc->tl_mbufs;
     }
     else
     {
         //high private queue
-            num = cirq_count(dpc->th_mbufs);
+        tx_mbufs = dpc->th_mbufs;    
     }
+    num = cirq_count(dpc->th_mbufs);
     return num;
 
 }
@@ -744,11 +629,11 @@ dpdk_check_tx_ring(struct qstack_context *ctxt,int stack_num)
     struct rte_mbuf *mbuf = NULL;
     struct dpdk_private_context *dpc  = dpc_list[stack_id];
 
-    //dpdk_get_start_ave_time(dpc);
+    //dpdk_get_start_ave_time(dpc);  /*for driver local test,do not use now */ 
     num = dpc->tx_num;
     while(!cirq_empty(dpc->th_mbufs))
     {
-        dpc->pkts_txburst[num] = cirq_get(dpc->th_mbufs);//[portid],&dpc->pkts_txburst[num]);
+        dpc->pkts_txburst[num] = cirq_get(dpc->th_mbufs);
         if(dpc->pkts_txburst[num] == NULL )
         {
             TRACE_EXIT("hight mbuf dequeue err \n");
@@ -768,6 +653,7 @@ dpdk_check_tx_ring(struct qstack_context *ctxt,int stack_num)
         {
             while(num > 0){
                 nb_tx =   rte_eth_tx_burst(0, dpc->cpu, dpc->pkts_txburst, num);
+               
 				DSTAT_ADD(ctxt->mbuf_tx_num, nb_tx);
                 loop_time++;
 
@@ -792,11 +678,9 @@ dpdk_check_tx_ring(struct qstack_context *ctxt,int stack_num)
     }
 
 
-        
     while(!cirq_empty(dpc->tl_mbufs))
     {
         dpc->pkts_txburst[num] = cirq_get(dpc->tl_mbufs);//[portid],&dpc->pkts_txburst[num]);
-        
         if(dpc->pkts_txburst[num] == NULL )
         {
             TRACE_MBUF("low mbuf dequeue err \n");
@@ -874,40 +758,18 @@ dpdk_check_rx_ring(struct qstack_context *ctxt,int stack_num)
     int total_num  = 0;
     struct rte_mbuf *ptr;
     int flag = 0;
-#if 0
-    uint64_t new_start =  0;
-    dpc->check_time++;
-    if(dpc->check_last_time == 0)
-    { 
-        dpc->check_last_time = rte_rdtsc_precise();
-    }
-    else
-    {
-        new_start = rte_rdtsc_precise();
-        dpc->check_total_time = dpc->check_total_time +  new_start - dpc->check_last_time;
-        dpc->check_last_time = new_start;
-    }
-#endif
-#if 0
-    dpc->check_time++;
-    if(dpc->check_time == 1)
-    {
-        dpc->check_time = 0;
-        do
+
+#if RX_FREE_NOATOMIC
+    do {
+    ptr = n21q_dequeue(dpc->rxfree_queue);
+        if(ptr != NULL)
         {
-            ptr  =  n21q_dequeue(dpc->rxfree_queue);
-            if(ptr != NULL)
-            {
-                flag = 1;
-                rte_pktmbuf_free(ptr);
-            }
-            else
-            {
-                flag = 0;
-            }
-        }while(flag != 0);
-    }
+             rte_pktmbuf_free(ptr);
+        }
+    }while(ptr != NULL);
+    ptr = NULL;
 #endif
+
 again:
 	for( i = 0 ; i<MAX_PKT_RX_BURST ;i++)
 	{
@@ -917,7 +779,6 @@ again:
 	DSTAT_ADD(ctxt->mbuf_rx_num, ret);
 
     //dpdk_get_end_ave_time(dpc);
-
     ptr = NULL;
     for( i = 0 ;i< ret ;i++){
         level = dpdk_soft_filter(dpc->pkts_rxburst[i]);
@@ -926,16 +787,16 @@ again:
         rs_ts_start(&ctxt->req_stage_ts, ptr);
 #endif
 #if MBUF_STREAMID
-//		if(ptr->stream_id != 0) {
-//        	TRACE_EXIT("a new test here and ptr->stream_id is %d \n",ptr->stream_id);
-//		}
+		if(ptr->stream_id != 0) {
+           	TRACE_EXIT("a new test here and ptr->stream_id is %d \n",ptr->stream_id);
+		}
 #endif
         if(level == 0)
         {
             if(cirq_add(dpc->rl_mbufs,ptr) != SUCCESS)
             {    
                 rte_pktmbuf_free(ptr);
-                TRACE_EXIT("dpc->rl_mbufs full and rl count is %d \n",cirq_count(dpc->rl_mbufs));
+                TRACE_EXIT("dpc->rl_mbufs full and dpc->cpu %d \n",dpc->cpu);
             }
             //think there will be a bug and need to fix later
         }
@@ -983,7 +844,7 @@ dpdk_rx_receive_one(struct qstack_context *ctxt, int level, int port)
 #if DRIVER_PRIORITY
     if (level == 1) {
         rx_mbufs = dpc->rh_mbufs;
-    	tag = cirq_get(rx_mbufs);
+		tag = cirq_get(rx_mbufs);
     	if (tag != NULL) {
         	tag->score = dpc->cpu;
 			return tag;
@@ -991,6 +852,7 @@ dpdk_rx_receive_one(struct qstack_context *ctxt, int level, int port)
 	}
 #endif
 	rx_mbufs = dpc->rl_mbufs;
+    tag = NULL;
     tag = cirq_get(rx_mbufs);
     if (tag != NULL) {
        	tag->score = dpc->cpu;
@@ -999,49 +861,7 @@ dpdk_rx_receive_one(struct qstack_context *ctxt, int level, int port)
 		TRACE_EXIT("failed to recieve packet from rx_pool\n");
 	}
 }
-#if 0
-struct rte_mbuf*  
-dpdk_rx_receive_one(struct qstack_context *ctxt, int level, int port)
-{
 
-    struct rte_mbuf *tag = NULL;
-    struct dpdk_private_context *dpc = dpc_list[ctxt->stack_id];
-    
-    int portid = 0;
-
-    if(level == 1) {
-            tag = cirq_get(dpc->rh_mbufs);
-            if(tag == NULL)
-            {
-                TRACE_INFO("dequeue NULL in rh_mbufs \n");
-            }
-            else
-            {
-                tag->score = dpc->cpu;
-//                mbuf_t pre = cirq_prefetch(dpc->rh_mbufs);
-//                mbuf_prefetch(pre);
-            }
-            return tag;
-    }
-    if(level == 0) {
-            tag = cirq_get(dpc->rl_mbufs);
-            if(tag == NULL)
-            {
-                TRACE_INFO("dequeue NULL in rl_mbufs \n");
-            }
-            else
-            {
-                tag->score = dpc->cpu;
-//                q_prefetch0(mbuf_get_buff_ptr(tag));
-//                mbuf_t pre = cirq_prefetch(dpc->rl_mbufs);
-//                ctxt->mbuf_prefetch = pre;
-//                mbuf_prefetch(pre);
-            }
-            return tag;
-    }
-    return NULL;
-}
-#endif
 
 int
 dpdk_rx_receive(struct qstack_context *ctxt, int level, int port, struct rte_mbuf **ptr)
@@ -1060,21 +880,6 @@ int add_tx_checksum_offloading_flag(struct rte_mbuf *m)
 { 
     struct iphdr *iph;
     struct tcphdr *tcph;
-#if 0
-    struct rte_eth_dev_info dev_info;
-    rte_eth_dev_info_get(0, &dev_info);
-    if ((dev_info.tx_offload_capa & DEV_TX_OFFLOAD_IPV4_CKSUM) == 0)
-    {
-        TRACE_EXIT("IPV4 CKSUM open err \n");
-        return -1;
-    }
-    if ((dev_info.tx_offload_capa & DEV_TX_OFFLOAD_TCP_CKSUM) == 0)
-    {
-
-        TRACE_EXIT("TCP CKSUM open err \n");
-        return -2;
-    }
-#endif
 	struct ethhdr *ethh = (struct ethhdr *)rte_pktmbuf_mtod_offset(m, 
 			struct ether_hdr *, 0);
 	if (unlikely(ntohs(ethh->h_proto)!=ETH_P_IP)) {
@@ -1084,11 +889,14 @@ int add_tx_checksum_offloading_flag(struct rte_mbuf *m)
 	if (unlikely(iph->protocol != IPPROTO_TCP)) {
 		return 1;
 	}
-    tcph = (struct tcphdr *)((uint8_t *)iph + (iph->ihl<<2));
-//    m->l2_len = sizeof(struct ether_hdr);
-//    m->l3_len = (iph->ihl<<2);
-//    m->l4_len = (tcph->doff<<2);
+	iph->check = 0;
 
+    tcph = (struct tcphdr *)((uint8_t *)iph + (iph->ihl<<2));
+	tcph->check = 0;
+    m->l2_len = sizeof(struct ether_hdr);
+    m->l3_len = (iph->ihl<<2);
+    m->l4_len = (tcph->doff<<2);
+	
     m->ol_flags = 0;
     m->ol_flags |= PKT_TX_TCP_CKSUM | PKT_TX_IP_CKSUM | PKT_TX_IPV4 ;
     tcph->check = rte_ipv4_phdr_cksum((struct ipv4_hdr *)iph, m->ol_flags);
@@ -1096,7 +904,7 @@ int add_tx_checksum_offloading_flag(struct rte_mbuf *m)
 }
 
 int   
-dpdk_tx_send(struct qstack_context *ctxt, int level, int port, struct rte_mbuf **ptr, int len)
+dpdk_tx_send(struct qstack_context *ctxt, int level, int port, struct rte_mbuf **ptr, int num)
 { 
 
     int ret = 0;
@@ -1108,10 +916,9 @@ dpdk_tx_send(struct qstack_context *ctxt, int level, int port, struct rte_mbuf *
     struct rte_mbuf * clone = NULL;
     struct rte_mbuf *mbuf = NULL;
     cirq_t tx_mbufs;
-
     dpc= dpc_list[ctxt->cpu];
     int portid = port;//CONFIG.eths[ifidx].ifindex;
-    for (i = 0; i< len; i++) {
+    for (i = 0; i< num; i++) {
 
         dpc_src = dpc_list[ptr[i]->score];
         mbuf = ptr[i];
@@ -1123,8 +930,7 @@ dpdk_tx_send(struct qstack_context *ctxt, int level, int port, struct rte_mbuf *
         } else if (mbuf->priority == 1){
             tx_mbufs = dpc->th_mbufs;
         }
-
-        if (unlikely(cirq_full(tx_mbufs))) { 
+        if (unlikely(cirq_full(tx_mbufs))) {
             TRACE_EXIT("dpc->tx_mbufs %d is full!\n", mbuf->priority);
             break;
         }
@@ -1138,32 +944,17 @@ dpdk_tx_send(struct qstack_context *ctxt, int level, int port, struct rte_mbuf *
             //set mbuf refcnt to 2,so when we free this mbuf in the first time
             //mbuf will not be putted back to mbuf pool,we still can use it
             mbuf = ptr[i];
-
-#if 0            
-            mbuf = rte_pktmbuf_clone(ptr[i], dpc_src->pktmbuf_clone_pool);
-            if (unlikely(mbuf == NULL)) {
-                TRACE_EXIT("uwmbuf clone test fail and clone is NULL\n");
-                rte_exit(EXIT_FAILURE, "Cannot get clone buf\n");
-            }
-//            q_prefetch0(mbuf);
-        //    mbuf = clone;
-            mbuf->tcp_seq = ptr[i]->tcp_seq;
-            mbuf->priority = ptr[i]->priority;
-            mbuf->payload_len = ptr[i]->payload_len;
-
-            /*do not free ptr[i] after send this packet*/
-            /*clone a new mbuf*/
-#endif
-//            rs_ts_pass(ptr[i], mbuf);
         }
-        cirq_add(tx_mbufs,mbuf);
+        if(cirq_add(tx_mbufs,mbuf) != SUCCESS) {
+             TRACE_EXIT("enqueue dpc->tx_mbufs %d is fail!\n", mbuf->priority);
+		}
         ret = ret + 1;
         rs_ts_add(mbuf->q_ts, REQ_ST_RSPSENT);
-     }
+    }
+
     return ret;
 }
-#if 0
-#endif 
+
 
 struct rte_mbuf* 
 dpdk_alloc_mbuf(int core_id, int type)
@@ -1199,7 +990,7 @@ dpdk_alloc_mbuf(int core_id, int type)
         }
 
         if(ptr == NULL){
-            TRACE_EXIT("this is for driver and stack fail and dpc is %x dpc->tx_pktmbuf_pool is %x\n",dpc,dpc->tx_pktmbuf_pool);
+            TRACE_INFO("this is for driver and stack fail and dpc is %x dpc->tx_pktmbuf_pool is %x\n",dpc,dpc->tx_pktmbuf_pool);
             return NULL;
         }
 
@@ -1210,8 +1001,6 @@ dpdk_alloc_mbuf(int core_id, int type)
     } 
     else 
     { 
-        //TRACE_EXIT("this is for app and level is %d\n",level);
-        //ptr = n21q_dequeue(dpc->nofree_queue);
         ptr = NULL;
 		time = 0;
         while(ptr == NULL)
@@ -1221,23 +1010,22 @@ dpdk_alloc_mbuf(int core_id, int type)
             if(ptr == NULL)
             {
                ptr = rte_pktmbuf_alloc(dpc->pktmbuf_alloc_pool);
-			   if(ptr != NULL && ptr->udata64 == 2)
-			   {
-					TRACE_EXIT("================A BIG ERR HERE!!!! FROM MBUFPOOL============\n");
-			   }
-            } else {
-
-				if(ptr->udata64 == 2)
-				{
-				TRACE_EXIT("================A BIG ERR HERE FROM N21QUEUE!!!!============\n");
+            } 
+            if(ptr == NULL) {
+                continue;
+            }
+			if(ptr->udata64 == 2)
+			{
 				ptr = NULL;
-				} 
-			}
-
+				/* this packet do not free by stack */
+				/*try again */
+			} 
+			
  			if(ptr == NULL)
 			{
 				continue;
 			} else {
+
 				ptr->udata64 = 2;
             	dpc->uwget_num++;
                	ptr->score = core_id;
@@ -1382,7 +1170,6 @@ dpdk_swget_num(int dpc_id)
 int
 dpdk_swget_fail_num(int dpc_id)
 {
-
     int sum = 0;
     int i = dpc_id;
     struct dpdk_private_context *dpc = NULL;
@@ -1393,7 +1180,6 @@ dpdk_swget_fail_num(int dpc_id)
 int
 dpdk_swfree_num(int dpc_id)
 {
-
     int sum = 0;
     int i = dpc_id;
     struct dpdk_private_context *dpc = NULL;

@@ -237,15 +237,6 @@ q_write(qapp_t app, int sockid, mbuf_t mbuf, uint32_t len, uint8_t flags)
 		mbuf->priority = 0;
 	}
 	
-#if INSTACK_TLS
-    if (cur_stream->is_ssl) {
-		ret = ssl_write(cur_stream->ssl, app->core_id, mbuf, 
-				mbuf_get_tcp_ptr(mbuf)+20, len);
-		if (ret != ERROR) {
-			ret = len;
-		}
-	} else 
-#endif
 	{
 		ret = _q_tcp_send(app->core_id, sockid, mbuf, len, flags);
 	}

@@ -68,7 +68,6 @@ typedef tcp_stream *tcp_stream_t;
 #include "tcp_recv_buff.h"
 #include "tcp_send_buff.h"
 #include "timestamp.h"
-#include "ssl.h"
 #include "qepoll.h"
 /******************************************************************************/
 /* global macros */
@@ -213,9 +212,6 @@ struct tcp_stream
 	
 	socket_t socket;
 	qstack_t qstack;
-#if INSTACK_TLS
-	q_SSL *ssl;
-#endif
 	struct event_list pending_events;
 	struct tcp_listener *listener;
 #if REQ_STAGE_TIMESTAMP
