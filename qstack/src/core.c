@@ -113,23 +113,6 @@ recv_check_timeout_test(qstack_t qstack, int stage_num)
 	return FALSE;
 }
 
-/**
- * flush the low-priority send events from user applications
- *
- * @param qstack	target stack process context
- *
- * @return null
- */
-static inline void
-flush_send_events(qstack_t qstack)
-{
-	stream_queue_t send_event_queue = &qstack->send_event_queue;
-	tcp_stream_t cur_stream;
-	while (cur_stream = streamq_dequeue(send_event_queue)) {
-		send_queue_add(qstack, cur_stream);
-	}
-}
-	
 static inline void
 handle_close_call(qstack_t qstack, tcp_stream_t cur_stream)
 {
