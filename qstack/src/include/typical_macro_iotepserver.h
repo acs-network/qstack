@@ -33,7 +33,7 @@
 #define EXTRA_RECV_CHECK		        2	
 /* number of workers (redis-server) per server thread */
 #define WORKER_PER_SERVER 				4
-#define STATISTIC_FORWARD_BUFF_LEN		
+//#define STATISTIC_FORWARD_BUFF_LEN		
 #define IOTEPSERVER_SETTINGS
 /******************************************************************************/
 #ifndef CORE_MAP_FUNC
