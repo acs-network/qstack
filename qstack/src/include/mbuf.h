@@ -42,7 +42,7 @@
 #define MBUF_ACOUNT		0	// "acount" in mbuf for mbuf allocation and free
 #define MBUF_QTS		0	// "q_ts" for whole life delay estimation
 #define MBUF_MBUFTS		0	// "mbuf_ts" for single interval estimation
-#define MBUF_STREAMID	1	// "stream_id" for mbuf tracing
+#define MBUF_STREAMID	0	// "stream_id" for mbuf tracing
 #define MBUF_DBG_OP		0	// operation trace in mbuf, share 64B with stream_id
 /*----------------------------------------------------------------------------*/
 #if (MBUF_ACOUNT + MBUF_QTS + MBUF_MBUFTS + \
