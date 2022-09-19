@@ -77,16 +77,17 @@ process_eth_packet(qstack_t qstack, const int ifidx, uint32_t cur_ts,
 	mbuf->l2_len = sizeof(struct ethhdr);
 
 	int i;
-	for (i=0; i<ETH_ALEN; i++) {
-		if (ethh->h_dest[i] != CONFIG.eths[0].haddr[i]) {
-			TRACE_EXCP("packet with wrong dest MAC address!\n");
-			return FAILED;
-		}
-	}
-
 //	TRACE_CHECKP("process packet! packet len: %d\n", mbuf->pkt_len);
 	if (likely(ip_proto == ETH_P_IP)) {
 		/* process ipv4 packet */
+		for (i=0; i<ETH_ALEN; i++) {
+			if (ethh->h_dest[i] != CONFIG.eths[0].haddr[i]) {
+				TRACE_EXCP("packet with wrong dest MAC address!\n");
+				mbuf_trace_excp(mbuf);
+				return FAILED;
+			}
+		}
+
 		ret = process_ipv4_packet(qstack, ifidx, cur_ts, mbuf, len);
 	} else if (ip_proto == ETH_P_ARP) {
 		process_arp_packet(qstack, ifidx, cur_ts, mbuf);

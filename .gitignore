@@ -53,3 +53,7 @@ out
 
 ## soft links
 *-lnk
+
+## localization
+qstack/src/diff.sh
+dpdk/usertools/fast_setup/setup.sh

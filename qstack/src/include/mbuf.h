@@ -36,6 +36,7 @@
 #include <rte_mbuf.h>
 #include "debug.h"
 #include "ps.h"
+#include "protocol.h"
 /******************************************************************************/
 // control of debug info filed in mbuf
 #define MBUF_ACOUNT		0	// "acount" in mbuf for mbuf allocation and free
@@ -538,6 +539,40 @@ mbuf_list_print_info(mbuf_list_t list)
 	}
 	TRACE_BUFF("mbuf list length:%d\n", count);
 #endif
+}
+
+static inline void
+mbuf_trace_excp(mbuf_t mbuf)
+{
+	struct ethhdr *ethh = (struct ethhdr *)mbuf_get_buff_ptr(mbuf);
+	struct iphdr *iph = (struct iphdr *)mbuf_get_ip_ptr(mbuf);
+	struct tcphdr *tcph = (struct tcphdr *)mbuf_get_tcp_ptr(mbuf);
+	int ip_len = ntohs(iph->tot_len);
+	uint8_t *payload    = (uint8_t *)tcph + (tcph->doff << 2);
+	int payloadlen = ip_len - (payload - (uint8_t *)iph);
+	uint32_t seq = ntohl(tcph->seq);
+	uint32_t ack_seq = ntohl(tcph->ack_seq);
+
+
+	TRACE_EXCP("packet %p from unknown stream! "
+			"mbuf seq:%u ack_seq:%u payload_len:%u "
+			"syn:%d, fin:%d, rst:%d, ack:%d "
+//			"saddr: %s, daddr: %s, "
+			"hwaddr: %02X:%02X:%02X:%02X:%02X:%02X to "
+			"%02X:%02X:%02X:%02X:%02X:%02X "
+			"saddr: %d.%d, daddr: %d.%d "
+			"sport: %u, dport: %u\n", 
+			mbuf
+			, seq, ack_seq, payloadlen
+			, tcph->syn, tcph->fin, tcph->rst, tcph->ack
+//			, inet_ntoa(iph->saddr), inet_ntoa(iph->daddr)
+			, ethh->h_source[0], ethh->h_source[1], ethh->h_source[2] 
+			, ethh->h_source[3], ethh->h_source[4], ethh->h_source[5] 
+			, ethh->h_dest[0], ethh->h_dest[1], ethh->h_dest[2] 
+			, ethh->h_dest[3], ethh->h_dest[4], ethh->h_dest[5] 
+			, (iph->saddr & 0xff0000)>>16, iph->saddr >>24
+			, (iph->daddr & 0xff0000)>>16, iph->daddr >>24
+			, ntohs(tcph->source), ntohs(tcph->dest));
 }
 /******************************************************************************/
 /*----------------------------------------------------------------------------*/
