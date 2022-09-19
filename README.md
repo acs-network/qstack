@@ -193,7 +193,8 @@ We test iotepserver with 10,368,000 concurrent TCP connections on machines of ``
 * **Updated global macro.**
 
     The following macro in ``qstack/src/include/mbuf.h`` can cause zero window,
- and it's disabled now:  - ``MBUF_STREAMID``
+ and it's disabled now:  
+  - ``MBUF_STREAMID``
 
 * **Check MAC address for IP packets, accept broadcast ARP requests.**
 
