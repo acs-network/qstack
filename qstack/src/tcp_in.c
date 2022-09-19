@@ -1281,7 +1281,7 @@ process_tcp_payload(qstack_t qstack, tcp_stream_t cur_stream,
 	/* if seq and segment length is lower than rcv_nxt, ignore and send ack */
 	if (unlikely(TCP_SEQ_LEQ(seq + payloadlen, cur_stream->rcv_nxt))) {
 		DSTAT_ADD(qstack->retrans_rcv_num, 1);
-		TRACE_OOO(stderr, "request drop! ip %u to %u, port %u to %u\n",
+		TRACE_OOO("request drop! ip %u to %u, port %u to %u\n",
 			htonl(cur_stream->daddr)&0xff, 
 			htonl(cur_stream->saddr)&0xff, 
 			htons(cur_stream->dport), 
