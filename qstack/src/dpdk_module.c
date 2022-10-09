@@ -1,4 +1,49 @@
-/* for io_module_func def'ns */
+/*
+* mTCP source code is distributed under the Modified BSD Licence.
+* 
+* Copyright (C) 2015 EunYoung Jeong, Shinae Woo, Muhammad Jamshed, Haewon Jeong, 
+* Sunghwan Ihm, Dongsu Han, KyoungSoo Park
+* 
+* All rights reserved.
+* 
+* Redistribution and use in source and binary forms, with or without
+* modification, are permitted provided that the following conditions are met:
+*     * Redistributions of source code must retain the above copyright
+*       notice, this list of conditions and the following disclaimer.
+*     * Redistributions in binary form must reproduce the above copyright
+*       notice, this list of conditions and the following disclaimer in the
+*       documentation and/or other materials provided with the distribution.
+*     * Neither the name of the <organization> nor the
+*       names of its contributors may be used to endorse or promote products
+*       derived from this software without specific prior written permission.
+* 
+* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+* ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+* WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+* DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+* DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+* (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+* LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+* ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+* SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+ /**
+ * @file dpdk_module.c
+ * @brief io functions from user-level drivers
+ * @author ZZ (zhangzhao@ict.ac.cn)
+ * @date 2018.7.12
+ * @version 1.0
+ */
+/*----------------------------------------------------------------------------*/
+/* - History:
+ *   1. Date: 2018.7.12
+ *   	Author: zhangzhao
+ *   	Modification: create
+ *   2. Date:
+ *   	Author:
+ *   	Modification:
+ */
 //#include "io_module.h"
 /******************************************************************************/
 #ifndef TRACE_LEVEL
@@ -38,9 +83,13 @@ static const struct rte_eth_conf port_conf_default = {
 
     .rx_adv_conf = {
        .rss_conf = {
-//            .rss_key = { 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, },
+/*      default rss key is 
+            .rss_key = { 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 
+                         0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A,
+                         0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 
+                         0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 
+                         0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, 0x6D, 0x5A, },*/
            .rss_key = NULL, 
-           //.rss_hf =  ETH_RSS_IP | ETH_RSS_UDP | ETH_RSS_TCP | ETH_RSS_SCTP,
            .rss_hf =  ETH_RSS_TCP,
        },
     },
@@ -48,31 +97,7 @@ static const struct rte_eth_conf port_conf_default = {
         .mq_mode = ETH_MQ_TX_NONE,
         .offloads = DEV_TX_OFFLOAD_TCP_CKSUM | DEV_TX_OFFLOAD_IPV4_CKSUM,
     },
-#if 0
-    .fdir_conf = 
-    {
-    .mode = RTE_FDIR_MODE_PERFECT,
-    .pballoc = RTE_FDIR_PBALLOC_64K,
-    .status = RTE_FDIR_REPORT_STATUS,
-    .mask = {
-        .vlan_tci_mask = 0x0,
-        .ipv4_mask     = {
-            .src_ip = 0xFFFFFFFF,
-            .dst_ip = 0xFFFFFFFF,
-        },
-        .ipv6_mask     = {
-            .src_ip = {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF},
-            .dst_ip = {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF},
-        },
-        .src_port_mask = 0xFFFF,
-        .dst_port_mask = 0xFFFF,
-        .mac_addr_byte_mask = 0xFF,
-        .tunnel_type_mask = 1,
-        .tunnel_id_mask = 0xFFFFFFFF,
-    },
-    .drop_queue = 127,
-    }
-#endif
+
 };
 
 static const struct rte_eth_rxconf rx_conf = {
@@ -208,8 +233,7 @@ dpdk_init_handle(int cpu)
 int
 dpdk_link_devices(struct qstack_context *ctxt)
 {
-    /* linking takes place during mtcp_init() */
-
+    /* do not use this func now */
     return 0;
 }
 /*----------------------------------------------------------------------------*/
@@ -239,7 +263,7 @@ int dpdk_total_recv_num()
     	dpc = dpc_list[i];
         sum = sum + dpc->rx_num;
     }
-    //printf("total recv num is: %d \n",sum);
+    
     return sum;
 }
 
@@ -251,10 +275,9 @@ int dpdk_total_free_num()
     for(i = 0; i<MAX_DPC_THREAD;i++){
         free_dpc = dpc_list[i];
         sum = sum + free_dpc->rx_free_num;
-    //    printf("core %d free num is: %d \n",i,free_dpc->rx_free_num);
-    //    printf("core %d func free num is: %d \n",i,free_dpc->func_free_num);
+   
     }
-    //printf("total free num is: %d \n",sum);
+    
     return sum;
 }
 
@@ -306,6 +329,7 @@ dpdk_release_pkt(int core_id, int ifidx, struct rte_mbuf *pkt_data)
 
 #if RX_FREE_NOATOMIC
 			/* if RX FREE_NOATOMIC OPEN ,use N21 queue send back mbuf to rx dpc thread */
+            /* this can not be used in master-filter mode */
             do {
 			ret = n21q_enqueue(dpc->rxfree_queue,source,pkt_data);
             	if(ret!=SUCCESS) {

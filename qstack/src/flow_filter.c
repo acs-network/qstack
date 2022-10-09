@@ -1,3 +1,25 @@
+/** 
+ * @file flow_filter.c
+ * @brief add flow filter to NIC,packet will swtich into different nic rx queue by tcp src port
+ * @author zhangzhao (zhangzhao@ict.ac.cn) 
+ * @date 2018.8.22
+ * @version 1.0
+ * @detail Function list: \n
+ *	1.generate_tcp_flow(): create a tcp flow rule by ip/port \n
+ *	2.flow_filter_init(): use generate_tcp_flow(),create packet switch rule bu tcp src port \n
+ *	3.flow_director_init(): need to change it later \n
+ */
+/*----------------------------------------------------------------------------*/
+/* - History:
+ *	1. Date: 2018.8.19 
+ *	   Author: zhangzhao 
+ *	   Modification: create
+  *	2. Date: 2022.9.23 
+ *	   Author: zhangzhao 
+ *	   Modification: add func note and remove unused func
+ */ 
+/******************************************************************************/
+
 #include "flow_filter.h"
 #include "qstack.h"
 #include "n21_queue.h"

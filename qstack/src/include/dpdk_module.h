@@ -1,19 +1,75 @@
+/*
+* mTCP source code is distributed under the Modified BSD Licence.
+* 
+* Copyright (C) 2015 EunYoung Jeong, Shinae Woo, Muhammad Jamshed, Haewon Jeong, 
+* Sunghwan Ihm, Dongsu Han, KyoungSoo Park
+* 
+* All rights reserved.
+* 
+* Redistribution and use in source and binary forms, with or without
+* modification, are permitted provided that the following conditions are met:
+*     * Redistributions of source code must retain the above copyright
+*       notice, this list of conditions and the following disclaimer.
+*     * Redistributions in binary form must reproduce the above copyright
+*       notice, this list of conditions and the following disclaimer in the
+*       documentation and/or other materials provided with the distribution.
+*     * Neither the name of the <organization> nor the
+*       names of its contributors may be used to endorse or promote products
+*       derived from this software without specific prior written permission.
+*  
+* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+* ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+* WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+* DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+* DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+* (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+* LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+* ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+* SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 
 /**
  * @file dpdk_module.h
  * @brief io functions from user-level drivers
  * @author ZZ (zhangzhao@ict.ac.cn)
- * @date 2018.10.25
- * @version 0.1
+ * @date 2022.9.23
+ * @version 1.0
  * @detail Function list: \n
- *   1. io_init(): init io module\n
- *   2. io_recv_check(): get mbufs from NIC's receive queue to recieve pool\n
- *   3. io_recv_mbuf(): get mbufs from receive pool to user\n
- *   4. io_send_check(): send mbufs from send pool to NIC's send queue\n
- *   5. io_send_mbuf: send mbufs from user to send pool\n
- *   6. io_get_uwmbuf(): get mbuf to be writen by user\n
- *   7. io_get_swmbuf(): get mbuf to be writen by stack\n
- *   8. io_free_mbuf(): free mbufs to mbuf pool\n
+ *   ============this func for get driver imformation  ==================
+ *   1. dpdk_total_recv_num(): nic total recv packet num \n
+ *   2. dpdk_total_free_num(): total release mbuf space num \n
+ *   3. dpdk_total_uwget_num(): get mbuf space total num for app \n
+ *   4. dpdk_uwget_fail_num(): get mbuf space fail times for app in one dpc thread \n
+ *   5. dpdk_uwfree_num: release mbuf space num in one dpc thread \n
+ *   6. dpdk_total_swget_num(): stack get mbuf total times \n
+ *   7. dpdk_swget_num(): stack get mbuf times in one dpc thread \n
+ *   8. dpdk_swget_fail_num(): stack get mbuf fail times in one dpc thread \n
+ *   9. dpdk_swfree_num: release mbuf(stack use) space num in one dpc thread \n
+ *   10. dpdk_total_uwget_free(): rekease mbuf(app use) space total num for app \n 
+ *   11. dpdk_get_rx_last_time(): get time information about last check time \n
+ *   ==============this func for stack use ==========================
+ *   12. check_all_ports_link_status(): check link state and print it \n
+ *   13. dpdk_init_handle: init and link userspace handle，this is the begining for userspace driver \n
+ *   14. dpdk_link_devices(): link dpdk port 0 device,will change later use for different port \n
+ *   15. dpdk_release_pkt(): stack release mbuf \n
+ *   16. dpdk_send_pkts(): stack send mbuf \n
+ *   17. dpdk_get_wptr(): get a pktbuf for starck ,then it will send to NIC \n
+ *   18. dpdk_recv_pkts: get a pktbuf memroy space for reading it \n
+ *   19. dpdk_get_rptr():  \n
+ *   20. dpdk_select(): find out target dpc in all qstack context \n
+ *   21. dpdk_destroy_handle(): close handle \n
+ *   22. dpdk_load_module(): init dpdk and userspace driver \n
+ *   23. dpdk_soft_filter: send pkt_mbuf to two type of queue \n
+ *   24. dpdk_print_state(): printf NIC port state(tx/rx/drop informathion) \n
+ *   25. dpdk_get_rx_state(): get free chunk num in rx queue \n
+ *   26. dpdk_get_tx_state(): get free chunk num in tx queue \n
+ *   27. dpdk_check_tx_ring(): only check tx ring,send all the packets in tx queue \n
+ *   28. dpdk_check_rx_ring: only check rx ring,send all the packets in rx queue \n
+ *   29. dpdk_rx_receive_one(): only receive one mbuf to stack \n
+ *   30. dpdk_rx_receive(): receive mbuf to stack ,but do not use it ,need to be updated\n
+ *   31. dpdk_tx_send(): send mbuf from stack to larget mbuf pool,later will send mbuf to driver \n
+ *   32. dpdk_alloc_mbuf(): alloc mbuf space by coire id \n
  */
 /*----------------------------------------------------------------------------*/
 /* - History:
