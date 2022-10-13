@@ -24,7 +24,7 @@ QTOOL_FLD	= ../../tools
 QTOOL_INC	= -I${QTOOL_FLD}/src/include
 
 # MEMEPOOL LIBRARY and HEADER
-QMEM_FLD    =../../mempool
+QMEM_FLD    =../../tools/mempool
 QMEM_INC    =-I${QMEM_FLD}/src/include
 QMEM_LIB    =-L${QMEM_FLD}/lib
 

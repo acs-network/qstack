@@ -8,11 +8,11 @@ QMEM_HDR_DIR=../include
 QMEM_HDR = dpdk_chunk.h dpdk_mempool.h
 
 # headers of universal tools
-QTOOL_FLD	= ../../tools
+QTOOL_FLD	= ../../../tools
 QTOOL_INC	= -I${QTOOL_FLD}/src/include
 
 # qstack library and header 
-QSTACK_FLD    =../../qstack
+QSTACK_FLD    =../../../qstack
 QSTACK_INC    =-I${QSTACK_FLD}/src/include
 QSTACK_LIB    =-L${QSTACK_FLD}/lib
 
@@ -29,10 +29,10 @@ INC_DIR=./include
 INC= -I$(INC_DIR) ${QSTACK_INC} ${QTOOL_INC}
 
 # DPDK LIBRARY and HEADER
-DPDK_INC=../../dpdk-lnk/include
-DPDK_LIB=../../dpdk-lnk/lib
+DPDK_INC=../../../dpdk-lnk/include
+DPDK_LIB=../../../dpdk-lnk/lib
 #TODO: zhangzhao
-DPDK_MACHINE_FLAGS = $(shell cat ../../dpdk-lnk/include/cflags.txt)
+DPDK_MACHINE_FLAGS = $(shell cat ../../../dpdk-lnk/include/cflags.txt)
 INC += ${DPDK_MACHINE_FLAGS} -I${DPDK_INC} -include $(DPDK_INC)/rte_config.h
 
 ### SOURCE CODE ###
