@@ -20,7 +20,7 @@ if [ "$1" = "dpdk" ]; then
     ./dpdk-setup.sh
 fi
 
-cd $QINGYUN_HOME/qcoroutine/src
+cd $QINGYUN_HOME/tools/qcoroutine/src
 make clean
 make -j20
 cd $QINGYUN_HOME/tools/mempool/src

@@ -29,7 +29,7 @@ QMEM_INC    =-I${QMEM_FLD}/src/include
 QMEM_LIB    =-L${QMEM_FLD}/lib
 
 # COROUTING LIBRARY and HEADER
-QCORO_FLD    =../../qcoroutine
+QCORO_FLD    =../../tools/qcoroutine
 QCORO_INC    =-I${QCORO_FLD}/src/include
 QCORO_LIB    =-L${QCORO_FLD}/lib
 

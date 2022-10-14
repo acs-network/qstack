@@ -19,7 +19,7 @@ QSTACK_FLD    =../qstack
 QSTACK_INC    =-I${QSTACK_FLD}/src/include
 QSTACK_LIB    =-L${QSTACK_FLD}/lib
 
-QCORO_FLD    =../qcoroutine
+QCORO_FLD    =../tools/qcoroutine
 QCORO_INC    =-I${QCORO_FLD}/src/include
 QCORO_LIB    =-L${QCORO_FLD}/lib
 
