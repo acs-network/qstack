@@ -435,7 +435,7 @@ io_recv_check(qstack_t qstack, int ifidx, systs_t cur_ts_us)
     int ret = 0;
     
 	#ifdef CHECK_INSERT
-	if (cur_ts_us == 0) {
+	if (cur_ts_us == FETCH_NEW_TS) {
 		cur_ts_us = get_time_us();
 	}
 	qstack->rt_ctx->last_check_ts = cur_ts_us;

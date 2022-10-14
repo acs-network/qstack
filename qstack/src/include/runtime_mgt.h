@@ -167,7 +167,7 @@ rt_check(rtctx_t rt_ctx, systs_t cur_ts)
 {
 #ifdef CHECK_INSERT
 	if (rt_ctx->qstack) {
-		if (cur_ts == 0) {
+		if (cur_ts == FETCH_NEW_TS) {
 			cur_ts = get_time_us();
 		}
 		if (cur_ts - rt_ctx->last_stack_ts > STACK_PENDING_TIMEOUT) {

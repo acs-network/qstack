@@ -742,15 +742,15 @@ qstack_main_loop(qstack_t qstack)
 		cur_ts = cur_ts_us / 1000;
 		qstack->rt_ctx->last_stack_ts = cur_ts_us;
 		ml_ts_add(&qstack->mloop_ts, MLOOP_ST_RCHECK);
-		rcv_num = io_recv_check(qstack, 0, 0);
+		rcv_num = io_recv_check(qstack, IFIDX_SINGLE, FETCH_NEW_TS);
 		BSTAT_CHECK_SET(rcv_num > qstack->rcv_backlog_max, 
 				qstack->rcv_backlog_max, rcv_num);
 		rcv_num = MIN(MAX_RECV_BATCH, rcv_num);
 		ml_ts_add(&qstack->mloop_ts, MLOOP_ST_RECV);
 		for (i=0; i<rcv_num; i++) {
-			mbuf= io_recv_mbuf(qstack, 0, &len);
+			mbuf= io_recv_mbuf(qstack, IFIDX_SINGLE, &len);
 			//TRACE_LOG("mbuf address is %p \n",mbuf);
-			process_eth_packet(qstack, 0, cur_ts, mbuf, 0);
+			process_eth_packet(qstack, IFIDX_SINGLE, cur_ts, mbuf, 0);
 			if (mbuf->mbuf_state == MBUF_STATE_RCVED) {
 				DSTAT_ADD(qstack->mbuf_dfreed, 1);
 				mbuf_set_op(mbuf, MBUF_OP_RCV_SFREE, qstack->stack_id);
@@ -758,7 +758,7 @@ qstack_main_loop(qstack_t qstack)
 			}
 		}
 #if EXTRA_RECV_CHECK >= 1
-		ret = io_recv_check(qstack, 0, 0);
+		ret = io_recv_check(qstack, IFIDX_SINGLE, FETCH_NEW_TS);
 		BSTAT_CHECK_SET(rcv_num > qstack->rcv_backlog_max, 
 				qstack->rcv_backlog_max, ret);
 #endif
@@ -773,7 +773,7 @@ qstack_main_loop(qstack_t qstack)
 		}
 
 #if EXTRA_RECV_CHECK >= 2
-		ret = io_recv_check(qstack, 0, 0);
+		ret = io_recv_check(qstack, IFIDX_SINGLE, FETCH_NEW_TS);
 		BSTAT_CHECK_SET(rcv_num > qstack->rcv_backlog_max, 
 				qstack->rcv_backlog_max, ret);
 #endif
@@ -784,7 +784,7 @@ qstack_main_loop(qstack_t qstack)
 		ml_ts_add(&qstack->mloop_ts, MLOOP_ST_APPCALL);
 
 #if EXTRA_RECV_CHECK >= 1
-		ret = io_recv_check(qstack, 0, 0);
+		ret = io_recv_check(qstack, IFIDX_SINGLE, FETCH_NEW_TS);
 		BSTAT_CHECK_SET(rcv_num > qstack->rcv_backlog_max, 
 				qstack->rcv_backlog_max, ret);
 #endif
@@ -798,14 +798,14 @@ qstack_main_loop(qstack_t qstack)
 		ml_ts_add(&qstack->mloop_ts, MLOOP_ST_SCHECK);
 		to_send += ctl_num + ack_num + rsp_num;
 #if EXTRA_RECV_CHECK >= 2
-		ret = io_recv_check(qstack, 0, 0);
+		ret = io_recv_check(qstack, IFIDX_SINGLE, FETCH_NEW_TS);
 		BSTAT_CHECK_SET(rcv_num > qstack->rcv_backlog_max, 
 				qstack->rcv_backlog_max, ret);
 #endif
 		if (to_send >= 10 || 
 				(to_send && (int)(cur_ts_us - last_send_check_ts) > 1) || 
 				(int)(cur_ts_us - last_send_check_ts > 10)) {
-			if(io_send_check(qstack, 0) == -1){			
+			if(io_send_check(qstack, IFIDX_SINGLE) == -1){			
 				TRACE_EXIT("err packets out\n");
 			}
 			to_send = 0;
