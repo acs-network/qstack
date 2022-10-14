@@ -964,12 +964,10 @@ process_tcp_ack(qstack_t qstack, tcp_stream *cur_stream, uint32_t cur_ts,
 		}
 	}
 	//TODO:ack too much data
-#if 1	
 	if (TCP_SEQ_GT(ack_seq, snd_buf->head_seq + sb_len(snd_buf))) {
 		TRACE_EXCP("ack too much data @ Stream %d! ack_seq: %d\n", cur_stream->id, ack_seq);
 		return;
 	}
-#endif
 	/* Update window */
 	if (TCP_SEQ_LT(cur_stream->rcvvar.snd_wl1, seq) ||
 			(cur_stream->rcvvar.snd_wl1 == seq && 
