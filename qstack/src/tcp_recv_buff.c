@@ -186,11 +186,6 @@ rb_put(qstack_t qstack, tcp_stream_t stream, mbuf_t mbuf)
 	rcv_buff_t buff = &stream->rcvvar.rcvbuf;
 	uint32_t buf_seq_next = mbuf->tcp_seq + mbuf->payload_len;
 	int ret = 0;
-#if 0
-	if (unlikely(mbuf->pool != get_dpc(qstack->stack_id)->rx_pktmbuf_pool)) {
-		TRACE_ERROR("try to put an error mbuf into rcvbuf!\n");
-	}
-#endif
 
 	if (unlikely(!buff)) {
 		TRACE_EXCP("no rcv_buff @ Stream %d!\n", stream->id);
@@ -343,15 +338,6 @@ rb_clear(qstack_t qstack, rcv_buff_t buff)
 	mbuf_list_free(qstack->stack_id, &buff->ooo_list);
 #ifdef PRIORITY_RECV_BUFF
 	mbufq_clear(qstack->stack_id, &buff->high_q, &qstack->mp_mbufq);
-#endif
-#if 0
-	mbuf_t mbuf;
-	while (mbuf = mbufq_dequeue(&buff->merged_q)) {
-		mbuf_free(qstack->stack_id, mbuf);
-	}
-	while (mbuf = mbuf_list_pop(&buff->ooo_list)) {
-		mbuf_free(qstack->stack_id, mbuf);
-	}
 #endif
 }
 /******************************************************************************/

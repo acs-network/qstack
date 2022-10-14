@@ -349,13 +349,6 @@ q_accept(qapp_t app, int sockid, struct sockaddr *addr, socklen_t *addrlen)
 		socket->saddr.sin_addr.s_addr = accepted->daddr;
 	}
 	//TODO: raise readevent if the accept_queue is not empty
-#if 0
-	if (!(listener->socket->epoll & Q_EPOLLET) && 
-			!streamq_empty(listener->acceptq))
-		AddEpollEvent(mtcp->ep, 
-			      QUSR_SHADOW_EVENT_QUEUE,
-			      listener->socket, MTCP_EPOLLIN);
-#endif
 	TRACE_CNCT("successfully accepted @ Stream %d\n", accepted->id);
 
 	if (addr && addrlen) {
@@ -433,27 +426,6 @@ q_connect(qapp_t app, int sockid, const struct sockaddr *addr,
 		qstack = get_stack_context(rss_core);
 	} else {
 		TRACE_TODO();
-	#if 0
-		// none-bind mode
-		if (mtcp->ap) {
-			ret = FetchAddress(mtcp->ap, 
-					mctx->cpu, num_queues, addr_in, &socket->saddr);
-		} else {
-			nif = GetOutputInterface(dip);
-			if (nif < 0) {
-				errno = EINVAL;
-				return -1;
-			}
-			ret = FetchAddress(ap[nif], 
-					   mctx->cpu, num_queues, addr_in, &socket->saddr);
-		}
-		if (ret < 0) {
-			errno = EAGAIN;
-			return -1;
-		}
-		socket->opts |= MTCP_ADDR_BIND;
-		is_dyn_bound = TRUE;
-	#endif
 	}
 
 	ret = streamq_enqueue(&qstack->connect_queue, app->core_id, 

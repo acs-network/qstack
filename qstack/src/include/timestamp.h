@@ -236,22 +236,6 @@ rs_ts_get_from_sock(int sockid)
 }
 #endif
 
-#if 0	// now it's not used
-static inline rs_ts_t
-rs_ts_alloc(int core_id)
-{
-#if REQ_STAGE_TIMESTAMP
-	uint64_t cur_ts = get_abs_time_ns();
-	rs_ts_t ret =  (rs_ts_t)mempool_alloc_chunk(get_global_ctx()->mp_st_ts, 
-			core_id);
-	if (ret) {
-		ret->stage = REQ_ST_PKTIN;
-		ret->ts[0] = cur_ts;
-	}
-	return ret;
-#endif
-}
-#endif
 /******************************************************************************/
 #define MLOOP_ST_RCHECK		0 // begin to io_recv_check()
 #define MLOOP_ST_RECV		1 // begin to process received packets

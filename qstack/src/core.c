@@ -95,13 +95,6 @@ recv_check_timeout_test(qstack_t qstack, int stage_num)
 	uint64_t interval = stage_timeout_test(&last_recv_check_ts, 
 			RECV_CHECK_TIMEOUT_THRESH);
 	uint32_t drop_num = io_get_rx_err(0);
-	#if 0	// active timeout detect
-	if (interval) {
-		TRACE_EXCP("recv_check timeout at stage %d, %llu, NIC drop: %u\n", 
-				stage_num, interval, io_get_rx_err(0));
-		return TRUE;
-	}
-	#endif
 	if (drop_num != last_drop_num) {
 		TRACE_EXCP(qstack, "NIC drop detect! "
 				"drop num: %u, interval: %llu, ts:%llu\n", 
@@ -739,13 +732,6 @@ qstack_main_loop(qstack_t qstack)
 	//for init before while loop
 	DSTAT_SET(qstack->mbuf_dfreed, 0);
 
-#if 0
-	sleep(20);
-	while(1) {
-		TRACE_TRACE("this is a message test %d %d %d %d %d %d\n", 
-				0, 1, 2, 3, 4, 5);
-	}
-#endif
 	while (1) {
 		loop_num++;
 		ret = 0;

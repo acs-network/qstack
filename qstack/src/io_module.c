@@ -453,17 +453,7 @@ io_recv_check(qstack_t qstack, int ifidx, systs_t cur_ts_us)
     }
 	#endif
 
-	#if 0
-    int total_num;
-    total_num = dpdk_get_rx_state(qstack,0,0) + dpdk_get_rx_state(qstack,1,0);
-	if(ret != total_num)
-	{
-		TRACE_EXIT("total num != ret and ret id %d total_num is %d",ret,total_num);
-	}
-    return total_num;
-	#else
 	return ret;
-	#endif
 #else
 	return cirq_count(&rx_queue);
 #endif

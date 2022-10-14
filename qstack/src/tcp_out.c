@@ -774,27 +774,6 @@ control_queue_add(qstack_t qstack, tcp_stream_t cur_stream)
 	return ret;
 }
 
-#if 0
-int 
-send_queue_add(qstack_t qstack, tcp_stream_t cur_stream)
-{
-	int ret = SUCCESS;
-	if (!cur_stream->sndvar.on_send_queue) {
-		sender_t sender = get_sender(qstack, cur_stream);
-		if (!sender) {
-			TRACE_EXIT("no available sender found!\n");
-		}
-
-		ret = sstreamq_enqueue(&sender->send_queue, cur_stream);
-		// ret = SUCCESS if success, or ERROR if the queue is full
-		if (ret == SUCCESS) {
-			cur_stream->sndvar.on_send_queue = TRUE;
-		}
-	}
-	return ret;
-}
-#endif 
-
 int
 enqueue_ack(qstack_t qstack, tcp_stream_t cur_stream, uint8_t opt)
 {

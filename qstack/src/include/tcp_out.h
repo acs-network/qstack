@@ -217,15 +217,6 @@ _q_tcp_send(int core_id, int sockid, mbuf_t mbuf, uint32_t len, uint8_t flags);
 static inline uint8_t
 send_event_queue_select(uint8_t core_id)
 {
-#if 0
-	if (core_id < CONFIG.num_stacks) {
-		// it's from the host stack core
-		return CONFIG.num_stacks;
-	} else {
-		// it's from the server core
-		return core_id - CONFIG.num_stacks;
-	}
-#endif 
 	return core_id;
 }
 

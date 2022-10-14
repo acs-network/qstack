@@ -38,11 +38,11 @@
 /******************************************************************************/
 #ifndef CORE_MAP_FUNC
 #define CORE_MAP_FUNC
-	#if 1 // for 6130 
+	// for 6130 
 		#define PHYSOCK_NUM		2
 		#define CORE_PER_SOCK	16
 
-//	#if 1 // for 5118
+	// for 5118
 //		#define PHYSOCK_NUM		2
 //		#define CORE_PER_SOCK	12
 static inline void
@@ -96,48 +96,6 @@ core_map_init(char *core_map)
 	}
 	fprintf(stderr, "\n");
 }
-	#endif
-	#if 0	// for 7285
-		#define PHYSOCK_NUM		2
-		#define CORE_PER_SOCK	32
-static inline void
-core_map_init(char *core_map)
-{
-	int group_interval = 8;		// core group interval, related to CPU arch
-	int i, j, sock, group, idx;
-	char redis_core[MAX_STACK_NUM * WORKER_PER_SERVER] = {0};
-	for (sock = 0; sock<PHYSOCK_NUM; sock++)
-		for (i=0; i<MAX_STACK_NUM / PHYSOCK_NUM; i++) {
-			group = sock*MAX_STACK_NUM/PHYSOCK_NUM + i;
-			fprintf(stderr, "===================\ncore group %d:\n", group);
-			// one stack thread per group
-			idx = group;
-			core_map[idx] = i*2 + sock*CORE_PER_SOCK;	// stack threads
-			fprintf(stderr, "stack thread: logic %d on physic %d\n", 
-					idx, core_map[idx]);
-	
-			idx = MAX_STACK_NUM+i;
-			core_map[idx] = core_map[group] + 1;	// server threads
-			fprintf(stderr, "server thread: logic %d on physic %d\n", 
-					idx, core_map[idx]);
-	
-			for (j=0; j<WORKER_PER_SERVER; j++) {
-				// worker threads
-				idx = 2*MAX_STACK_NUM + i*WORKER_PER_SERVER + j;
-				core_map[idx] = (group+1) * group_interval + 2*j;
-				fprintf(stderr, "worker thread: logic %d on physic %d\n", 
-						idx, core_map[idx]);
-				redis_core[group*WORKER_PER_SERVER+j] = core_map[idx] + 1;
-			}
-		}
-	fprintf(stderr, "====================\nsuggest redis-server bind:\n");
-	for (i=0; i<MAX_STACK_NUM * WORKER_PER_SERVER; i++) {
-		fprintf(stderr, "%d ", redis_core[i]);
-	}
-	fprintf(stderr, "\n");
-	exit(0);
-}
-	#endif
 #else
 	#error only one core_map_init() is available!
 #endif

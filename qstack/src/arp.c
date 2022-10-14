@@ -290,27 +290,6 @@ get_dst_hwaddr(uint32_t dip, char *haddr)
 	}
 	memcpy(haddr, ret, ETH_ALEN);
 	return 0;
-#if 0
-	struct hash_node *entry;
-	unsigned char *haddr = NULL;
-	unsigned long hash = HASH(dip);
-
-	for (entry = CONFIG.arp_table[hash]; entry != NULL; entry = entry->next) {
-		if (entry->ip == dip) {
-			break;
-		}
-	}
-
-	if (!entry && proxy != PROXY_NONE) {
-		for (entry = CONFIG.arp_table[PROXY_HASH]; entry != NULL; entry = entry->next) {
-			if ((proxy==PROXY_EXACT) ? (entry->ip==dip) : !((entry->ip^dip)&entry->ip_mask))
-				break;
-		}
-	}
-
-	haddr = entry->haddr;
-	return haddr;
-#endif
 }
 
 /**
