@@ -428,19 +428,6 @@ void dpdk_destroy_handle(struct qstack_context *ctxt);
  * */
 void dpdk_load_module(void);
 
-#if 0
-/* - Function: void dpdk_soft_filter
- * - Description: put pkt_mbuf to two type of queue
- * - Parameters:
- *
- * @param: pkt_mbuf: target mbuf
- *
- * @retrun
- *  1 if high priority queue
- *  0 if low priority queue
- * */
-int dpdk_soft_filter(struct rte_mbuf * pkt_mbuf);
-#endif
 
 /* - Function: void dpdk_print_state
  * - Description: printf NIC port state
