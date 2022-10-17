@@ -1000,7 +1000,7 @@ InitializeServerThread(int core)
 	
 	ctx->qapp->core_id = core + core_stack;
 
-	qid = qepoll_create (ctx->qapp, MAX_EVENTS / core_server);
+	qid = qepoll_create(ctx->qapp, MAX_EVENTS / core_server);
 	
 	return ctx;
 }
