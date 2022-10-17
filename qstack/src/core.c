@@ -939,6 +939,8 @@ qstack_init(int stack_num)
 #endif
 
 	TRACE_CHECKP("qstack system global_init finish!\n");
+
+	q_init_manager(stack_num, CONFIG.num_servers);
 }  
 
 int

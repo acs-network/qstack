@@ -976,6 +976,7 @@ struct thread_context *
 InitializeServerThread(int core)
 {
 	struct thread_context *ctx;
+	int qid;
 
 	ctx = (struct thread_context *)calloc(1, sizeof(struct thread_context));
 	if (!ctx) {
@@ -996,6 +997,10 @@ InitializeServerThread(int core)
 	ctx->core = core;
 
 	ctx->qapp->app_id = core;
+	
+	ctx->qapp->core_id = core + core_stack;
+
+	qid = qepoll_create (ctx->qapp, MAX_EVENTS / core_server);
 	
 	return ctx;
 }
@@ -1094,9 +1099,7 @@ main(int argc, char **argv)
 	fprintf(stderr, "start host at %s\n", host_ip);
 	host_ip_set(host_ip);
 	q_register_pkt_filter(redis_packet_pri_filter);
-	
-    q_init_manager(core_stack, core_server);
-	
+		
 	/* create mtcp context: this will spawn an mtcp thread */
 
 //	qcfg = get_qconf();
@@ -1107,9 +1110,7 @@ main(int argc, char **argv)
     qapp_thread = (qapp_t)calloc(nb_processors, sizeof(struct qapp_context));
 
     for(i = 0; i < core_server; i++) {
-	ctx[i] = InitializeServerThread(i);
-	ctx[i]->qapp->core_id = i + core_stack;
-	qid[i] = qepoll_create (ctx[i]->qapp, MAX_EVENTS / core_server);
+		ctx[i] = InitializeServerThread(i);
     }
 		
     int listener = CreateListeningSocket(ctx[0]);

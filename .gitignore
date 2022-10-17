@@ -7,10 +7,10 @@ dpdk/
 qstack/reference/qingyun
 qstack/lib/
 qstack/include/
-qcoroutine/lib/
-qcoroutine/include/
-mempool/lib/
-mempool/include/
+tools/qcoroutine/lib/
+tools/qcoroutine/include/
+tools/mempool/lib/
+tools/mempool/include/
 x86_64-native-linuxapp-gcc/
 examples/
 !scripts/examples

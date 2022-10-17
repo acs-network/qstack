@@ -109,7 +109,7 @@ The iotepserver benchmark requires 1 server, 1 client and 1 monitor.
     ```
     # export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
     # mkdir /var/run/redis
-    # cd <qstack_home>/redis-scripts
+    # cd <qstack_home>/tools/redis-scripts
     # ./dir-redis.sh 16 sock
     # cd <qstack_home>/apps/redis; make
     ```
@@ -122,7 +122,7 @@ The iotepserver benchmark requires 1 server, 1 client and 1 monitor.
 
 1. start redis
     ```
-    # cd <qstack_home>/redis-scripts
+    # cd <qstack_home>/tools/redis-scripts
     # ./setup-redis.sh 16 up sock
     ```
     Note: the param ``16`` refer to start 16 redis-server;

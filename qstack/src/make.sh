@@ -1,6 +1,6 @@
 QINGYUN_HOME=$(cd `dirname $0`; pwd)/../..
 QSTACK_HOME=$QINGYUN_HOME/qstack
-QMEM_PATH=$QINGYUN_HOME/mempool
+QMEM_PATH=$QINGYUN_HOME/tools/mempool
 DPDK_PATH=$QINGYUN_HOME/dpdk-lnk
 
 if [ ! -d "$DPDK_PATH" ];then
@@ -20,10 +20,10 @@ if [ "$1" = "dpdk" ]; then
     ./dpdk-setup.sh
 fi
 
-cd $QINGYUN_HOME/qcoroutine/src
+cd $QINGYUN_HOME/tools/qcoroutine/src
 make clean
 make -j20
-cd $QINGYUN_HOME/mempool/src
+cd $QINGYUN_HOME/tools/mempool/src
 make clean
 make -j20
 cd $QINGYUN_HOME/qstack/src
