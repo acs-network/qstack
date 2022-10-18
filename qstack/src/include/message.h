@@ -304,20 +304,6 @@ msgq_recv_msg()
 } while(0)
 
 #endif
-#if 0
-static inline int 
-decode_message(char* buffer, msg_t msg)
-{
-	int ret = 0;
-	switch (msg->argc) {
-	case 0: 
-		strcpy(buffer, msg->format);
-		ret = strlen(msg->format);
-		break;
-	case 1:
-	}
-}
-#endif
 
 static inline int
 decode_message(char *buffer, msg_t msg)
