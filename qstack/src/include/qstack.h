@@ -224,13 +224,6 @@ struct qstack_context
 
 	struct mainloop_timestamp mloop_ts;
 	struct req_stage_timestamp req_stage_ts;
-#if 0
-	tcp_stream_queue sendq;		///< streams need to send data
-	tcp_stream_queue ackq;		///< streams need to send ack
-	tcp_stream_queue resetq;	///< streams need to reset
-	tcp_stream_queue destroyq;	///< streams need to be destroyed
-#endif
-
 	
 // statistic
 #if STATISTIC_STATE

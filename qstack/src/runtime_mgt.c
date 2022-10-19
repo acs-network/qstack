@@ -123,15 +123,6 @@ create_app_pthread(int core_id, app_func_t app_func, void *args, int type)
 	qapp->core_id = core_id;
 
     test_op = (void *)runtime_mgt;
-#if 0
-	// runtime management
-	active_tq_insert(runtime_mgt, core_id);
-	for (i=0; i<MAX_STACK_NUM; i++) {
-		runtime_mgt->task_map_s[i][core_id] = core_id;
-		runtime_mgt->task_map_r[core_id][i] = core_id;
-	}
-
-#endif
 	qcore->rt_ctx->qapp = qapp;
 	qapp->rt_ctx = qcore->rt_ctx;
 	get_global_ctx()->app_contexts[qapp->app_id] = qapp;

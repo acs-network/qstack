@@ -362,22 +362,11 @@ extern FILE *fp_screen;
 		} while (0)
 
 //#define TRACE_MSG(c,f,m...)	(void)0
-#if 1
 #define TRACE_MSG(c, f, ...)	do {	\
 			msg_t msg = msgq_get_wptr(c);	\
 			encode_message(msg, (f), __VA_ARGS__);	\
 			msgq_send_msg(c);	\
 		} while(0)
-#else
-#define TRACE_MSG(c, f, ...)	do {	\
-			fprintf(stderr, f, __VA_ARGS__);	\
-			struct q_message msg = {0};	\
-			encode_message(&msg, f, __VA_ARGS__);	\
-			char tmp[500];	\
-			decode_message(tmp, &msg);	\
-			fputs(tmp, stderr);	\
-		} while(0)
-#endif
 /*----------------------------------------------------------------------------*/
 #ifndef TRACE_EXCP_AS_ERR
 	#define TRACE_EXCP(f,m...) 	fprintf(stderr, "[%2d][%llu][EXCP]@[%10s:%4d] " \

@@ -373,35 +373,6 @@ check_sequence_validation(qstack_t qstack, tcp_stream *cur_stream, uint32_t cur_
 		struct tcphdr *tcph, uint32_t seq, uint32_t ack_seq, int payloadlen)
 {
 	/* Protect Against Wrapped Sequence number (PAWS) */
-#if 0	
-	if (!tcph->rst && cur_stream->saw_timestamp) {
-		//TODO: process timestamp
-		struct tcp_timestamp ts;
-		if (!ParseTCPTimestamp(cur_stream, &ts, 
-				(uint8_t *)tcph + TCP_HEADER_LEN, 
-				(tcph->doff << 2) - TCP_HEADER_LEN)) {
-			/* if there is no timestamp */
-			/* TODO: implement here */
-			return FALSE;
-		}
-
-		/* RFC1323: if SEG.TSval < TS.Recent, drop and send ack */
-		if (TCP_SEQ_LT(ts.ts_val, cur_stream->rcvvar.ts_recent)) {
-			/* TODO: ts_recent should be invalidated 
-					 before timestamp wraparound for long idle flow */
-			enqueue_ack(qstack, cur_stream, ACK_OPT_NOW);
-			return FALSE;
-		} else {
-			/* valid timestamp */
-			if (TCP_SEQ_GT(ts.ts_val, cur_stream->rcvvar.ts_recent)) {
-				cur_stream->rcvvar.ts_last_ts_upd = cur_ts;
-			}
-
-			cur_stream->rcvvar.ts_recent = ts.ts_val;
-			cur_stream->rcvvar.ts_lastack_rcvd = ts.ts_ref;
-		}
-	}
-#endif
 	/* TCP sequence validation */
 	if (!TCP_SEQ_BETWEEN(seq + payloadlen, cur_stream->rcv_nxt, 
 				cur_stream->rcv_nxt + cur_stream->rcvvar.rcv_wnd)) {
@@ -494,57 +465,6 @@ handle_rst(qstack_t qstack, tcp_stream *cur_stream, uint32_t ack_seq,
 
 	return TRUE;
 }
-
-#if 0
-inline void 
-estimate_rtt(qstack_t qstack, tcp_stream *cur_stream, uint32_t mrtt)
-{
-	/* This function should be called for not retransmitted packets */
-	/* TODO: determine tcp_rto_min */
-#define TCP_RTO_MIN 0
-	long m = mrtt;
-	uint32_t tcp_rto_min = TCP_RTO_MIN;
-	struct tcp_recv_vars *rcvvar = &cur_stream->rcvvar;
-
-	if (m == 0) {
-		m = 1;
-	}
-	if (rcvvar->srtt != 0) {
-		/* rtt = 7/8 rtt + 1/8 new */
-		m -= (rcvvar->srtt >> 3);
-		rcvvar->srtt += m;
-		if (m < 0) {
-			m = -m;
-			m -= (rcvvar->mdev >> 2);
-			if (m > 0) {
-				m >>= 3;
-			}
-		} else {
-			m -= (rcvvar->mdev >> 2);
-		}
-		rcvvar->mdev += m;
-		if (rcvvar->mdev > rcvvar->mdev_max) {
-			rcvvar->mdev_max = rcvvar->mdev;
-			if (rcvvar->mdev_max > rcvvar->rttvar) {
-				rcvvar->rttvar = rcvvar->mdev_max;
-			}
-		}
-		if (TCP_SEQ_GT(cur_stream->sndvar.snd_una, rcvvar->rtt_seq)) {
-			if (rcvvar->mdev_max < rcvvar->rttvar) {
-				rcvvar->rttvar -= (rcvvar->rttvar - rcvvar->mdev_max) >> 2;
-			}
-			rcvvar->rtt_seq = cur_stream->snd_nxt;
-			rcvvar->mdev_max = tcp_rto_min;
-		}
-	} else {
-		/* fresh measurement */
-		rcvvar->srtt = m << 3;
-		rcvvar->mdev = m << 1;
-		rcvvar->mdev_max = rcvvar->rttvar = MAX(rcvvar->mdev, tcp_rto_min);
-		rcvvar->rtt_seq = cur_stream->snd_nxt;
-	}
-}
-#endif
 
 static inline tcp_stream *
 CreateNewFlowHTEntry(qstack_t qstack, uint32_t cur_ts, const struct iphdr *iph, 
@@ -1044,12 +964,10 @@ process_tcp_ack(qstack_t qstack, tcp_stream *cur_stream, uint32_t cur_ts,
 		}
 	}
 	//TODO:ack too much data
-#if 1	
 	if (TCP_SEQ_GT(ack_seq, snd_buf->head_seq + sb_len(snd_buf))) {
 		TRACE_EXCP("ack too much data @ Stream %d! ack_seq: %d\n", cur_stream->id, ack_seq);
 		return;
 	}
-#endif
 	/* Update window */
 	if (TCP_SEQ_LT(cur_stream->rcvvar.snd_wl1, seq) ||
 			(cur_stream->rcvvar.snd_wl1 == seq && 
@@ -1156,17 +1074,6 @@ process_tcp_ack(qstack_t qstack, tcp_stream *cur_stream, uint32_t cur_ts,
 		}
 		
 		// TODO: rtt estimate
-#if 0
-		/* Estimate RTT and calculate rto */
-		if (cur_stream->saw_timestamp) {
-			estimate_rtt(qstack, cur_stream, 
-					cur_ts - cur_stream->rcvvar.ts_lastack_rcvd);
-			sndvar->rto = (cur_stream->rcvvar.srtt >> 3) + cur_stream->rcvvar.rttvar;
-			assert(sndvar->rto > 0);
-		} else {
-			//TODO: Need to implement timestamp estimation without timestamp
-		}
-#endif
 		/* Update congestion control variables */
 		if (cur_stream->state >= TCP_ST_ESTABLISHED) {
 			if (sndvar->cwnd < sndvar->ssthresh) {
@@ -1327,22 +1234,6 @@ process_tcp_payload(qstack_t qstack, tcp_stream_t cur_stream,
 				cur_stream->state == TCP_ST_FIN_WAIT_2) {
 			rb_clear(qstack, &cur_stream->rcvvar.rcvbuf);
 		}
-#if 0
-<<<<<<< HEAD
-=======
-		virtual_server_process(qstack, cur_stream);
-#if QDBG_OOO
-		cur_stream->last_req_ts = get_time_ns();
-#endif
-	}
-
-	/* discard the buffer if the state is FIN_WAIT_1 or FIN_WAIT_2, 
-	   meaning that the connection is already closed by the application */
-	if (cur_stream->state == TCP_ST_FIN_WAIT_1 || 
-			cur_stream->state == TCP_ST_FIN_WAIT_2) {
-		rb_clear(qstack, &cur_stream->rcvvar.rcvbuf);
->>>>>>> branch-0.1_send_anywhere
-#endif
 	}
 	cur_stream->rcv_nxt = rcvvar->rcvbuf.merged_next;
 	rcvvar->rcv_wnd = rcvvar->rcvbuf.size - rb_merged_len(&rcvvar->rcvbuf);
@@ -1437,16 +1328,6 @@ process_tcp_packet(qstack_t qstack, uint32_t cur_ts, const int ifidx,
 		return ERROR;
 	}
 	// only use software tcp_checksum
-#if 0
-	check = tcp_csum((uint16_t *)tcph, (tcph->doff << 2) + payloadlen, 
-			iph->saddr, iph->daddr);
-	if (check) {
-		TRACE_EXCP("Checksum Error: Original: 0x%04x, calculated: 0x%04x\n", 
-			  tcph->check, check);
-		tcph->check = 0;
-		return ERROR;
-	}
-#endif
 
 	s_qtuple.proto = 6;				// TCP protocol
 	s_qtuple.ip_src = iph->daddr;	// regard the locol host as source

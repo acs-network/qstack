@@ -267,6 +267,11 @@
 #ifndef IF_RX_CHECK
 	#define IF_RX_CHECK 0
 #endif
+
+#define SINGLE_NIC_PORT
+#ifdef SINGLE_NIC_PORT
+	#define IFIDX_SINGLE	0
+#endif
 /******************************************************************************/
 /* static macros */
 #define MAX_FLOW_PSTACK	MAX_FLOW_NUM/CONFIG.num_stacks	//for every stack thread

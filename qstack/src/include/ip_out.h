@@ -104,9 +104,10 @@ generate_ip_packet(qstack_t qstack, tcp_stream_t stream, mbuf_t mbuf,
 static inline int
 get_output_interface(uint32_t daddr)
 {
+#ifdef SINGLE_NIC_PORT
 	// TODO: multi NIC port select
 	return 0;
-#if 0
+#else
 	int nif = -1;
 	int i;
 	int prefix = 0;

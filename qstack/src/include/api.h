@@ -323,7 +323,6 @@ static inline uint32_t
 q_virtual_process(uint64_t delay)
 {
 #if VIRTUAL_TASK_DELAY_MODE
-	#if 1
 	uint64_t i;
 	uint32_t a, b;
 	uint64_t loop_time = delay * 23 / 15;
@@ -337,14 +336,6 @@ q_virtual_process(uint64_t delay)
 		b = b - a;
 	}
 	return a;
-	#else
-	uint64_t start = get_abs_time_ns();
-	uint64_t end = get_abs_time_ns();
-	while (end - start < delay) {
-		end = get_abs_time_ns();
-	}
-	return (uint32_t)(end-start);
-	#endif
 #else
 	return 0;
 #endif

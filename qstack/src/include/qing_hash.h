@@ -36,13 +36,6 @@
 #include <rte_jhash.h>
 //#include <rte_cmp_x86.h>
 #include "circular_queue.h"
-#if 0
-#ifdef __cplusplus
-extern "C" {
-#endif
-#endif
-
-
 
 #define RETURN_IF_TRUE(cond, retval)
 
@@ -336,14 +329,6 @@ qing_hash_del_key(const struct qing_hash *h, const void *key);
  */
 int
 qing_hash_lookup_data(const struct qing_hash *h, const void *key, void **data);
-
-#if 0
-#ifdef __cplusplus
-}
-#endif
-#endif
-
-
 
 #endif /* _QING_HASH_H_ */
 

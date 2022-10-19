@@ -435,7 +435,7 @@ io_recv_check(qstack_t qstack, int ifidx, systs_t cur_ts_us)
     int ret = 0;
     
 	#ifdef CHECK_INSERT
-	if (cur_ts_us == 0) {
+	if (cur_ts_us == FETCH_NEW_TS) {
 		cur_ts_us = get_time_us();
 	}
 	qstack->rt_ctx->last_check_ts = cur_ts_us;
@@ -453,17 +453,7 @@ io_recv_check(qstack_t qstack, int ifidx, systs_t cur_ts_us)
     }
 	#endif
 
-	#if 0
-    int total_num;
-    total_num = dpdk_get_rx_state(qstack,0,0) + dpdk_get_rx_state(qstack,1,0);
-	if(ret != total_num)
-	{
-		TRACE_EXIT("total num != ret and ret id %d total_num is %d",ret,total_num);
-	}
-    return total_num;
-	#else
 	return ret;
-	#endif
 #else
 	return cirq_count(&rx_queue);
 #endif

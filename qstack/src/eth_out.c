@@ -73,20 +73,7 @@ eth_hdr_generate(qstack_t qstack, mbuf_t mbuf, uint16_t h_proto, int nif,
  	 * -sanity check- 
 	 * return early if no interface is set (if routing entry does not exist)
 	 */
-#if 0
-	if (nif < 0) {
-		TRACE_INFO("No interface set!\n");
-		return ERROR;
-	}
-
-	eidx = CONFIG.nif_to_eidx[nif];
-	if (eidx < 0) {
-		TRACE_EXCP("No interface selected!\n");
-		return ERROR;
-	}
-#else
 	eidx = 0;
-#endif
 	
 	if (!(mbuf)) {
 		TRACE_EXCP("empty mbuf to be generate!\n");
@@ -94,13 +81,6 @@ eth_hdr_generate(qstack_t qstack, mbuf_t mbuf, uint16_t h_proto, int nif,
 	}
 	
 	buf = mbuf_get_buff_ptr(mbuf);
-
-#if 0
-	TRACE_DBG("dst_hwaddr: %02X:%02X:%02X:%02X:%02X:%02X\n",
-				dst_haddr[0], dst_haddr[1], 
-				dst_haddr[2], dst_haddr[3], 
-				dst_haddr[4], dst_haddr[5]);
-#endif
 
 	ethh = (struct ethhdr *)buf;
 	for (i = 0; i < ETH_ALEN; i++) {

@@ -41,6 +41,7 @@
 #endif
 
 #define HZ						1000
+#define FETCH_NEW_TS	0
 /******************************************************************************/
 // macro functions
 #define TIME_TICK				(1000000/HZ)		// in us

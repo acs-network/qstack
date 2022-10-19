@@ -101,29 +101,13 @@ generate_tcp_flow(uint16_t port_id, uint16_t rx_q,
 	 * since in this example we just want to get the
 	 * ipv4 we set this level to allow all.
 	 */
-#if 1
 
 	pattern[0] = eth_item;
-#endif
 	/*
 	 * setting the second level of the pattern (ip).
 	 * in this example this is the level we care about
 	 * so we set it according to the parameters.
 	 */
-#if 0
-	memset(&ip_spec, 0, sizeof(struct rte_flow_item_ipv4));
-	memset(&ip_mask, 0, sizeof(struct rte_flow_item_ipv4));
-	ip_spec.hdr.dst_addr = htonl(DEST_IP);
-	ip_mask.hdr.dst_addr = FULL_MASK;
-	ip_spec.hdr.src_addr = htonl(SRC_IP);
-	ip_mask.hdr.src_addr = EMPTY_MASK;
-	pattern[1].type = RTE_FLOW_ITEM_TYPE_IPV4;
-	pattern[1].spec = &ip_spec;
-	pattern[1].mask = &ip_mask;
-
-	/* the final level must be always type end */
-	pattern[2].type = RTE_FLOW_ITEM_TYPE_END;
-#else
 
 	memset(&ip_spec, 0, sizeof(struct rte_flow_item_ipv4));
 	memset(&ip_mask, 0, sizeof(struct rte_flow_item_ipv4));
@@ -140,7 +124,6 @@ generate_tcp_flow(uint16_t port_id, uint16_t rx_q,
 	 * in this example this is the level we care about
 	 * so we set it according to the parameters.
 	 */
-#if 1
 	memset(&tcp_spec, 0, sizeof(struct rte_flow_item_tcp));
 	memset(&tcp_mask, 0, sizeof(struct rte_flow_item_tcp));
 	tcp_spec.hdr.dst_port = rte_cpu_to_be_16(dport);
@@ -155,8 +138,6 @@ generate_tcp_flow(uint16_t port_id, uint16_t rx_q,
 	/* the final level must be always type end */
 	pattern[3] = end_item;
 	pattern[3].type = RTE_FLOW_ITEM_TYPE_END;
-#endif
-#endif
 
     TRACE_INFO("raw_spec.pattern is 0x%p and &raw_spec is 0x%p\n",raw_spec.pattern,&raw_spec);
     TRACE_INFO("pattern is 0x%p action address is 0x%p \n",pattern,action);
@@ -196,41 +177,6 @@ int flow_filter_init(int qstack_num,int port_id)
     printf("!!! the %d rule create success \n",i);
     return 1;
 }
-
-#if 0 // moved to dpdk_module.c
-int rss_filter_init(int qstack_num,int port_id)
-{
-    uint16_t idx;
-    int ret; 
-    struct rte_eth_rss_reta_entry64 reta_conf[APP_RETA_SIZE_MAX];
-    struct rte_eth_dev_info dev_info;
-    memset(reta_conf, 0, sizeof(reta_conf));
-    rte_eth_dev_info_get(port_id, &dev_info);
-    
-
-    for(idx = 0;idx < dev_info.reta_size; idx++){
-       reta_conf[idx / RTE_RETA_GROUP_SIZE].mask = UINT64_MAX;
-    }    
-    for(idx = 0;idx < dev_info.reta_size; idx++){
-		uint32_t reta_id = idx / RTE_RETA_GROUP_SIZE;
-		uint32_t reta_pos = idx % RTE_RETA_GROUP_SIZE;
-//       if(reta_conf[reta_id].reta[reta_pos]%2 != 0)
-//       {
-//           reta_conf[reta_id].reta[reta_pos] = reta_conf[reta_id].reta[reta_pos] - 1;
-//       }
-        reta_conf[reta_id].reta[reta_pos] = idx % qstack_num;
-    }    
-
-    ret = rte_eth_dev_rss_reta_update(port_id,reta_conf,dev_info.reta_size);   
-    if(ret != 0){
-        TRACE_ERROR("RETA update failed\n");
-        return FAIL;
-    }else{
-        TRACE_LOG("RETA update success\n");
-        return SUCCESS;
-    }    
-}
-#endif
 
 int flow_director_init(int qstack_num,int port_id)
 {

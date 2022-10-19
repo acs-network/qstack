@@ -69,12 +69,6 @@ generate_ip_packet_standalone(qstack_t qstack, mbuf_t mbuf, uint8_t protocol,
 
 //	haddr = GetDestinationHWaddr(daddr);
 	if (!haddr) {
-#if 0
-		uint8_t *da = (uint8_t *)&daddr;
-		TRACE_INFO("[WARNING] The destination IP %u.%u.%u.%u "
-				"is not in ARP table!\n",
-				da[0], da[1], da[2], da[3]);
-#endif
 //		RequestARP(mtcp, daddr, nif, mtcp->cur_ts);
 		return NULL;
 	}
@@ -133,54 +127,7 @@ generate_ip_packet(qstack_t qstack, tcp_stream_t stream, mbuf_t mbuf,
 	// TODO: get_dest_hwaddr
 	//haddr = get_dst_hwaddr(stream->daddr, 0);
 	haddr = stream->dhw_addr;
-#if 0	// x86-client-wz
-	haddr[0] = 0x90;
-	haddr[1] = 0xe2;
-	haddr[2] = 0xba;
-	haddr[3] = 0x17;
-	haddr[4] = 0xa6;
-	haddr[5] = 0x73;
-#endif
-#if 0	// x86-client-fx
-	haddr[0] = 0x90;
-	haddr[1] = 0xe2;
-	haddr[2] = 0xba;
-	haddr[3] = 0x17;
-	haddr[4] = 0xa6;
-	haddr[5] = 0x72;
-#endif
-#if 0	// zhangzhao
-	haddr[0] = 0x90;
-	haddr[1] = 0xe2;
-	haddr[2] = 0xba;
-	haddr[3] = 0x13;
-	haddr[4] = 0x0b;
-	haddr[5] = 0x41;
-#endif
-#if 0	// wanwenkai eno2
-	haddr[0] = 0x90;
-	haddr[1] = 0xe2;
-	haddr[2] = 0xba;
-	haddr[3] = 0x16;
-	haddr[4] = 0x1a;
-	haddr[5] = 0x6c;
-#endif
-#if 0	// wanwenkai enp175s0f0
-	haddr[0] = 0x90;
-	haddr[1] = 0xe2;
-	haddr[2] = 0xba;
-	haddr[3] = 0xba;
-	haddr[4] = 0x56;
-	haddr[5] = 0x88;
-#endif
-
 	if (!haddr) {
-#if 0
-		uint8_t *da = (uint8_t *)&stream->daddr;
-		TRACE_INFO("[WARNING] The destination IP %u.%u.%u.%u "
-				"is not in ARP table!\n",
-				da[0], da[1], da[2], da[3]);
-#endif
 		/* if not found in the arp table, send arp request and return NULL */
 		/* tcp will retry sending the packet later */
 		// TODO:request arp

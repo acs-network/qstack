@@ -136,27 +136,6 @@ q_alloc_epres( int n )
 int
 AllocateSocket(socket_map_t socket, int socktype)
 {
-#if 0
-	socket_map_t socket = NULL;
-
-	while (socket == NULL) {
-		socket = TAILQ_FIRST(&qconf->free_smap);
-		if (!socket) {
-			TRACE_ERROR("The concurrent sockets are at maximum.\n");
-			return NULL;
-		}
-
-		TAILQ_REMOVE(&qmag->free_smap, socket, free_smap_link);
-
-		/* if there is not invalidated events, insert the socket to the end */
-		/* and find another socket in the free smap list */
-		if (socket->qevents) {
-			TRACE_EPOLL("There are still not invalidate events remaining.\n");
-			TAILQ_INSERT_TAIL(&qmag->free_smap, socket, free_smap_link);
-			socket = NULL;
-		}
-	}
-#endif
 	if (!socket) {
 		TRACE_ERROR("The concurrent sockets are at maximum.\n");
 		return NULL;
@@ -535,22 +514,17 @@ qepoll_qevent(qmag_t qmag, eque_t event_que, int core, struct qepoll_event *even
    		else
    			DSTAT_ADD(qstack->wait_stev_num, 1);*/
    		reg[sockid].proc = 0;
-#if 0 // modified by shenyifan
-   		TRACE_EVENT("Wait qevent from qepoll_map:%p, "
+
+   		TRACE_EVENT("@Core %d Wait qevent from qepoll_map:%p, "
    					"events[%d]:%p, "
    					"events type:%d, "
    					"events fd:%d, "
    					"events.data.ptr:%p\n",
-   					socket,*ev_cnt-1,
-   					events,
+                    core,socket,
+					*ev_cnt-1, &event_que->qevent[event_que->start],
    					events[*ev_cnt-1].events,
    					sockid,
    					events[*ev_cnt-1].data.ptr);
-#else
-		TRACE_CHECKP("@Core %d wait event %p, type:%d, fd:%d\n", 
-				core, &event_que->qevent[event_que->start], 
-				events[*ev_cnt-1].events, sockid);
-#endif
    		//qepoll_map->qevents[qepoll_map->qepoll] 
    		//	&= (~event_que->qevent[event_que->start].events);
    	}

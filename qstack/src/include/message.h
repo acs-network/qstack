@@ -276,32 +276,6 @@ msgq_recv_msg()
 	return (message_queue *)n21q_dequeue_local(&msgq);
 }
 
-#if 0
-static void
-encode_message(msg_t msg, const char *format, ...)
-{
-	int reg_area_len;
-	va_list ap;
-	msg->type = 0;
-	va_start(ap, format);
-	fprintf(stderr, "gp_offset:%u fp_offset:%u reg_save_area:%p overflow:%p\n",
-			ap->gp_offset, ap->fp_offset, ap->reg_save_area, 
-			ap->overflow_arg_area);
-	uint64_t *reg_area = ap->reg_save_area;
-	uint64_t *overflow = ap->overflow_arg_area;
-	fprintf(stderr, "@msg:%p @format:%p, @ap:%p ap:%p\n", 
-			&msg, &format, &ap, ap);
-	fprintf(stderr, "reg_area:\n");
-	for (i=ap->gp_offset; i<48; i+=8) {
-//		fprintf(stderr, "%llx ", reg_area[i/8]);
-	}
-	fprintf(stderr, "\noverflow_area:\n");
-	for (i=0; i<4; i++) {
-		fprintf(stderr, "%llx ", overflow[i]);
-	}
-}
-#endif
-
 #if USE_VALIST_ENCODE
 #define encode_message(msg, fmt, ...) do {	\
 	(msg)->type = 0;	\
@@ -329,20 +303,6 @@ encode_message(msg_t msg, const char *format, ...)
 	PARSE_ARGS((msg)->argv, __VA_ARGS__);	\
 } while(0)
 
-#endif
-#if 0
-static inline int 
-decode_message(char* buffer, msg_t msg)
-{
-	int ret = 0;
-	switch (msg->argc) {
-	case 0: 
-		strcpy(buffer, msg->format);
-		ret = strlen(msg->format);
-		break;
-	case 1:
-	}
-}
 #endif
 
 static inline int
