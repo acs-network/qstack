@@ -965,7 +965,11 @@ process_tcp_ack(qstack_t qstack, tcp_stream *cur_stream, uint32_t cur_ts,
 	}
 	//TODO:ack too much data
 	if (TCP_SEQ_GT(ack_seq, snd_buf->head_seq + sb_len(snd_buf))) {
-		TRACE_EXCP("ack too much data @ Stream %d! ack_seq: %d\n", cur_stream->id, ack_seq);
+		TRACE_EXCP("ack too much data @ Stream %d! "
+				"ack_seq:%lu, snd_nxt:%lu, snd_una:%lu, "
+				"sndbuf->head:%lu, sndbuf->tail:%lu\n", 
+				cur_stream->id, ack_seq, cur_stream->snd_nxt, sndvar->snd_una, 
+				snd_buf->head_seq, snd_buf->next_seq);	
 		return;
 	}
 	/* Update window */
@@ -1343,21 +1347,8 @@ process_tcp_packet(qstack_t qstack, uint32_t cur_ts, const int ifidx,
 					&s_qtuple))) {
 		/* not found in flow table */
 		if (unlikely(!tcph->syn)) {
-			TRACE_EXCP("packet %p from unknown stream! "
-					"mbuf seq:%u ack_seq:%u payload_len:%u "
-					"fin:%d, rst:%d "
-//					"saddr: %s, daddr: %s, "
-					"saddr: %d.%d, daddr: %d.%d"
-					"sport: %u, dport: %u\n", 
-					mbuf
-					, seq, ack_seq, payloadlen
-					, tcph->fin, tcph->rst
-//					, inet_ntoa(iph->saddr), inet_ntoa(iph->daddr)
-					, (iph->saddr & 0xff0000)>>16, iph->saddr >>24
-					, (iph->daddr & 0xff0000)>>16, iph->daddr >>24
-					, ntohs(tcph->source), ntohs(tcph->dest));
 			mbuf_print_detail(mbuf);
-
+			mbuf_trace_excp(mbuf);
 			return FAILED;
 		}
 		TRACE_CHECKP("Create new flow!\n");
@@ -1366,6 +1357,7 @@ process_tcp_packet(qstack_t qstack, uint32_t cur_ts, const int ifidx,
 //		cur_stream = handle_passive_open(qstack, 0, iph, tcph, seq, window);
 		if (unlikely(!cur_stream)) {
 			TRACE_EXCP("failed to alloc a new stream!\n");
+			mbuf_trace_excp(mbuf);
 			return FAILED;
 		}
 		for (i = 0; i < ETH_ALEN; i++) {
