@@ -112,11 +112,11 @@ struct tcp_send_vars
 			is_fin_sent:1, 
 			ack_cnt:6;			///< number of acks to send. max 64
 
-	uint8_t on_control_queue:1,	///< sender queue
-			on_send_queue:1,
-			on_ack_queue:1,
-			on_closeq:1,
-			on_resetq:1;
+	uint8_t on_control_queue;	///< sender queue
+	uint8_t	on_send_queue;
+	uint8_t	on_ack_queue;
+	uint8_t	on_closeq;
+	uint8_t	on_resetq;
 	/* IP-level information */
 	uint16_t ip_id;
 

@@ -1201,9 +1201,14 @@ process_tcp_payload(qstack_t qstack, tcp_stream_t cur_stream,
 			htons(cur_stream->sport));
 		TRACE_OOO("unexcepted retransmit packet received @ Stream %d!"
 				"seq: %u, payloadlen: %u, rcv_nxt: %u, "
-				"last_req_ts:%llu, last_ack_ts:%llu\n"
+				"last_req_ts:%llu, last_ack_ts:%llu, "
+				"ackq_add:%llu, ackq_get:%llu, "
+				"ack_out:%d, ack_cnt:%d, on_ack_queue:%d\n"
 				, cur_stream->id, seq, payloadlen, cur_stream->rcv_nxt
-				, cur_stream->last_req_ts, cur_stream->last_ack_ts);
+				, cur_stream->last_req_ts, cur_stream->last_ack_ts
+				, cur_stream->ackq_add_cnt, cur_stream->ackq_get_cnt
+				, cur_stream->ack_out_cnt, cur_stream->sndvar.ack_cnt, 
+				cur_stream->sndvar.on_ack_queue);
 		return FAILED;
 	}
 	/* if payload exceeds receiving buffer, drop and send ack */
