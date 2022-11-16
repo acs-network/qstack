@@ -305,10 +305,12 @@ syn_packet_filter(qstack_t qstack, uint32_t ip, uint16_t port)
 		ret = NULL;
 		TRACE_EXCP("SYN packet with wrong IP address!\n");
 	}
-	if (ntohs(port) != ret->port) {
-		ret = NULL;
-		TRACE_EXCP("SYN packet with wrong TCP port %d. Expected:%d\n", 
-				ntohs(port), ret->port);
+	if(ret){
+		if (ntohs(port) != ret->port) {
+			ret = NULL;
+			TRACE_EXCP("SYN packet with wrong TCP port %d. Expected:%d\n", 
+					ntohs(port), ret->port);
+		}
 	}
 	return ret;
 }
