@@ -532,35 +532,35 @@ __print_network_state()
 			"global:\n"
 	#if STATISTIC_STATE_BASIC
 			"==========Throughput:\n"
-			"packet_in:\t\t%16u/%16u\n"
+			"packet_in:\t\t%16u/%16u\n" // io layer info
 			"packet_out:\t\t%16u/%16u\n"
-			"request_in:\t\t%16u/%16u\n"
+			"request_in:\t\t%16u/%16u\n" // tcp layer info
 			"response_out:\t\t%16u/%16u\n"
-			"throughput in:\t\t%16llu Mbps\n"
+			"throughput in:\t\t%16llu Mbps\n" // io layer info
 			"throughput out:\t\t%16llu Mbps\n"
 			"==========Stack state:\n"
 			"flow created:\t\t%16u\n"
 			"NIC recv drop:\t\t%16u\n"
 	#endif
 	#if STATISTIC_STATE_DETAIL
-			"RX ring mbuf allocation failures :\t\t%16u\n"
+//			"RX ring mbuf allocation failures :\t\t%16u\n"
 //			"NIC recv drop time test:\t\t%16u\n"
-			"NIC tx send:\t\t%16u\n"
-			"NIC tx err:\t\t%16u\n"
+//			"NIC tx send:\t\t%16u\n"
+//			"NIC tx err:\t\t%16u\n"
 			"==========Mbuf alloc and free:\n"
 //			"uw alloc time:\t\t%16u\n"
 //			"sw alloc time:\t\t%16u\n"
 //			"driver total free:\t%16u\n"
 //			"driver total recv:\t%16u\n"
-			"rx mbufs:\t\t%16u/%16u\n"
-			"tx mbufs:\t\t%16u/%16u\n"
+//			"rx mbufs:\t\t%16u/%16u\n" // driver layer info
+//			"tx mbufs:\t\t%16u/%16u\n"
 			"app get mbufs:\t\t%16u\n"
 			"request_freed:\t\t%16u\n" // freeed by q_free_mbuf()
 			"req_dropped:\t\t%16u\n" // dropped because failed to add to buff
 			"mbuf_dfreed:\t\t%16u\n"
 			"uwmbuf_alloced:\t\t%16u\n"
 			"acked_freed:\t\t%16u\n"
-			"high-req jump:\t\t%16u\n"
+//			"high-req jump:\t\t%16u\n"
 			"==========App calls:\n"
 			"accepted_num:\t\t%16u\n"
 			"q_recv() called:\t%16u\n"
@@ -572,9 +572,11 @@ __print_network_state()
 			"==========Temp statistic:\n"
 			"flow closed:\t\t%16u\n"
 	#endif
+	#if STATISTIC_LOG
 			"==========Log statistic:\n"
 			"log_size:\t\t%16llu\n"
 			"log_rate:\t\t%16llu KB/s\n"
+	#endif
 			"system time:\t%llu\n"
 			"============================================================\n"
 	#if STATISTIC_STATE_BASIC
@@ -590,25 +592,25 @@ __print_network_state()
 			, io_get_rx_err(0)
 	#endif
 	#if STATISTIC_STATE_DETAIL
-			, io_get_rx_nobuf_err(0)
+//			, io_get_rx_nobuf_err(0)
 //			, io_get_rx_last_time(0)
-			, io_get_tx_out(0)
-			, io_get_tx_err(0)
+//			, io_get_tx_out(0)
+//			, io_get_tx_err(0)
 			
 			// mbuf alloc and free
 //			, dpdk_total_uwget_num()
 //			, dpdk_total_swget_num()
 //			, dpdk_total_free_num()
 //			, dpdk_total_recv_num()
-			, mbuf_rx_num, mbuf_rx_num - mbuf_rx_num_pre
-			, mbuf_tx_num, mbuf_tx_num - mbuf_tx_num_pre
+//			, mbuf_rx_num, mbuf_rx_num - mbuf_rx_num_pre
+//			, mbuf_tx_num, mbuf_tx_num - mbuf_tx_num_pre
 			, rmbuf_get_num
 			, request_freed
 			, req_dropped
 			, mbuf_dfreed
 			, uwmbuf_alloced
 			, acked_freed
-			, high_jump
+//			, high_jump
 
 			// app calls
 			, accepted_num
@@ -624,9 +626,11 @@ __print_network_state()
 			// temp variables
 			, flow_closed
 	#endif
+	#if STATISTIC_LOG
 			// log
 			, log_size
 			, (log_size - log_size_pre)/1024
+	#endif
 			, get_time_s()
 			);
 

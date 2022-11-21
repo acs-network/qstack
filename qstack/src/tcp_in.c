@@ -305,10 +305,12 @@ syn_packet_filter(qstack_t qstack, uint32_t ip, uint16_t port)
 		ret = NULL;
 		TRACE_EXCP("SYN packet with wrong IP address!\n");
 	}
-	if (ntohs(port) != ret->port) {
-		ret = NULL;
-		TRACE_EXCP("SYN packet with wrong TCP port %d. Expected:%d\n", 
-				ntohs(port), ret->port);
+	if(ret){
+		if (ntohs(port) != ret->port) {
+			ret = NULL;
+			TRACE_EXCP("SYN packet with wrong TCP port %d. Expected:%d\n", 
+					ntohs(port), ret->port);
+		}
 	}
 	return ret;
 }
@@ -965,7 +967,11 @@ process_tcp_ack(qstack_t qstack, tcp_stream *cur_stream, uint32_t cur_ts,
 	}
 	//TODO:ack too much data
 	if (TCP_SEQ_GT(ack_seq, snd_buf->head_seq + sb_len(snd_buf))) {
-		TRACE_EXCP("ack too much data @ Stream %d! ack_seq: %d\n", cur_stream->id, ack_seq);
+		TRACE_EXCP("ack too much data @ Stream %d! "
+				"ack_seq:%lu, snd_nxt:%lu, snd_una:%lu, "
+				"sndbuf->head:%lu, sndbuf->tail:%lu\n", 
+				cur_stream->id, ack_seq, cur_stream->snd_nxt, sndvar->snd_una, 
+				snd_buf->head_seq, snd_buf->next_seq);	
 		return;
 	}
 	/* Update window */
@@ -1195,9 +1201,14 @@ process_tcp_payload(qstack_t qstack, tcp_stream_t cur_stream,
 			htons(cur_stream->sport));
 		TRACE_OOO("unexcepted retransmit packet received @ Stream %d!"
 				"seq: %u, payloadlen: %u, rcv_nxt: %u, "
-				"last_req_ts:%llu, last_ack_ts:%llu\n"
+				"last_req_ts:%llu, last_ack_ts:%llu, "
+				"ackq_add:%llu, ackq_get:%llu, "
+				"ack_out:%d, ack_cnt:%d, on_ack_queue:%d\n"
 				, cur_stream->id, seq, payloadlen, cur_stream->rcv_nxt
-				, cur_stream->last_req_ts, cur_stream->last_ack_ts);
+				, cur_stream->last_req_ts, cur_stream->last_ack_ts
+				, cur_stream->ackq_add_cnt, cur_stream->ackq_get_cnt
+				, cur_stream->ack_out_cnt, cur_stream->sndvar.ack_cnt, 
+				cur_stream->sndvar.on_ack_queue);
 		return FAILED;
 	}
 	/* if payload exceeds receiving buffer, drop and send ack */
@@ -1343,21 +1354,8 @@ process_tcp_packet(qstack_t qstack, uint32_t cur_ts, const int ifidx,
 					&s_qtuple))) {
 		/* not found in flow table */
 		if (unlikely(!tcph->syn)) {
-			TRACE_EXCP("packet %p from unknown stream! "
-					"mbuf seq:%u ack_seq:%u payload_len:%u "
-					"fin:%d, rst:%d "
-//					"saddr: %s, daddr: %s, "
-					"saddr: %d.%d, daddr: %d.%d"
-					"sport: %u, dport: %u\n", 
-					mbuf
-					, seq, ack_seq, payloadlen
-					, tcph->fin, tcph->rst
-//					, inet_ntoa(iph->saddr), inet_ntoa(iph->daddr)
-					, (iph->saddr & 0xff0000)>>16, iph->saddr >>24
-					, (iph->daddr & 0xff0000)>>16, iph->daddr >>24
-					, ntohs(tcph->source), ntohs(tcph->dest));
 			mbuf_print_detail(mbuf);
-
+			mbuf_trace_excp(mbuf);
 			return FAILED;
 		}
 		TRACE_CHECKP("Create new flow!\n");
@@ -1366,6 +1364,7 @@ process_tcp_packet(qstack_t qstack, uint32_t cur_ts, const int ifidx,
 //		cur_stream = handle_passive_open(qstack, 0, iph, tcph, seq, window);
 		if (unlikely(!cur_stream)) {
 			TRACE_EXCP("failed to alloc a new stream!\n");
+			mbuf_trace_excp(mbuf);
 			return FAILED;
 		}
 		for (i = 0; i < ETH_ALEN; i++) {
