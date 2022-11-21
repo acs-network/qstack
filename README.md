@@ -114,6 +114,8 @@ The iotepserver benchmark requires 1 server, 1 client and 1 monitor.
     # cd <qstack_home>/apps/redis; make
     ```
 
+Note: You Must apply non-root user privileges to compile parts as below, otherwise the comiling will be stopped.
+
 4. Make QStack
 	```
     # cd <qstack_home>/qstack/src;./make.sh

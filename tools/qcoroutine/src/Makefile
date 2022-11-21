@@ -1,5 +1,10 @@
 .PHONY: clean
 
+HOME=$(shell env | grep HOME | cut -d "=" -f 2)
+ifeq ($(HOME),/root)
+ $(error Do not compile as root)
+endif
+
 ### TARGET ###
 TARGETS=runme
 QCORO_LIB_DIR=../lib
