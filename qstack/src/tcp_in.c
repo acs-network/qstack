@@ -53,8 +53,8 @@
 #include "tcp_in.h"
 #include "tcp_out.h"
 #include "tcp_send_buff.h"
-#include "api.h"
 #include "timer.h"
+#include "api.h"
 /******************************************************************************/
 /* local macros */
 #define VERIFY_RX_CHECKSUM TRUE
@@ -88,7 +88,7 @@ virtual_server_process(qstack_t qstack, tcp_stream_t cur_stream)
 	mbuf_t send_mbuf = q_get_wmbuf(&qapp, &response, &sndlen);
 	response[6] = 0x3;
 	rs_ts_pass(mbuf, send_mbuf);
-	q_write(&qapp, sockid, send_mbuf, len, 0);
+	q_send(&qapp, sockid, send_mbuf, len, 0);
 	#else
 	mbuf_t mbuf = rb_get(qstack->stack_id, cur_stream);
 	#endif

@@ -42,7 +42,7 @@
  *   5. q_connect(): try to connect to a server \n
  *   6. q_recv(): receive an mbuf from receive buffer \n
  *   7. q_get_wmbuf(): get a free mbuf to be writen and sent out \n
- *   8. q_write(): send an mbuf to send buffer \n
+ *   8. q_send(): send an mbuf to send buffer \n
  *   9. q_writev(): send an iovec array to send buffer \n
  *   10. q_close(): close connection on the socket \n
  *   11. q_socket_ioctl(): set socket configuration or get socket states \n
@@ -63,25 +63,277 @@
 #ifndef __API_H_
 #define __API_H_
 /******************************************************************************/
-#include "qstack.h"
-#include "tcp_out.h"
-#include "io_module.h"
+#include <stdint.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+#ifndef INLINE_DISABLED 
+//complie inner app , inline
+#include "api_inner.c"
+#endif
 /*----------------------------------------------------------------------------*/
 #ifdef __cplusplus
-// TODO: this is commented because of folding, cancle the fold before release
-//extern "C" {
+extern "C" {
 #endif
 /******************************************************************************/
 /* global macros */
 #define QFLAG_SEND_HIGHPRI 		0x01
-
 #ifndef INPORT_ANY
 	#define INPORT_ANY  (uint16_t)0
 #endif
+
+
+/******************************************************************************/
+/* global data structures
+***************************************************************************** */
+#ifndef __QSTACK_H_
+struct qapp;
+
+typedef struct qapp*  qapp_t;
+
+
+/**
+ * create an application thread, and pin it to the target core
+ *
+ * @param core_id		the core on which the application is goning to run
+ * @app_handle[out]		the handle of created application thread
+ * @param app_func		the entry function of application
+ * @param args			the args for app_func
+ *
+ * @return
+ * 	return SUCCESS if success; otherwise return FALSE or ERROR
+ * @note
+ *  input app_handle with NULL if don't need a qapp return
+ */
+#ifndef __RUNTIME_MGT_H_
+typedef int (* app_func_t)(void *);
+#endif
+int
+qstack_create_app(int core_id, qapp_t *app_handle, app_func_t app_func,
+                  void *args);
+
+
+void
+qstack_init(int stack_num);
+
+
+#endif
+
+#ifndef __MBUF_H_
+//struct mbuf;
+//typedef struct mbuf*  mbuf_t;
+typedef struct rte_mbuf* mbuf_t;
+#endif
+
+
+
+#ifndef __ARP_H_
+void
+sarp_set(const char *dip, uint8_t mask, const char *haddr);
+#endif
+
+extern int(*driver_pri_filter)(mbuf_t mbuf);
+
+
+
+/******************************************************************************/
+/* EPOLL-related data structures
+***************************************************************************** */
+/*----------------------------------------------------------------------------*/
+#ifndef __QEPOLL_H_
+
+enum qepoll_op
+{
+    Q_EPOLL_CTL_ADD = 1,
+    Q_EPOLL_CTL_DEL = 2,
+    Q_EPOLL_CTL_MOD = 3
+};
+/*----------------------------------------------------------------------------*/
+enum qevent_type
+{
+    Q_EPOLLNONE	= 0x000,
+    Q_EPOLLIN	= 0x001,
+    Q_EPOLLPRI	= 0x002,
+    Q_EPOLLOUT	= 0x004,
+    Q_EPOLLRDNORM	= 0x040,
+    Q_EPOLLRDBAND	= 0x080,
+    Q_EPOLLWRNORM	= 0x100,
+    Q_EPOLLWRBAND	= 0x200,
+    Q_EPOLLMSG		= 0x400,
+    Q_EPOLLERR		= 0x008,
+    Q_EPOLLHUP		= 0x010,
+    Q_EPOLLRDHUP 	= 0x2000,
+    Q_EPOLLONESHOT	= (1 << 30),
+    Q_EPOLLET		= (1 << 31)
+};
+
+/* Structure for storing qepoll event data.*/
+union qepoll_data
+{
+    void *ptr;
+    int sockid;
+    uint32_t u32;
+    uint64_t u64;
+};
+
+
+typedef union qepoll_data qepoll_data_t;
+/* Structure for storing qepoll event infomation.*/
+#define QVDEB
+struct qepoll_event
+{
+    uint8_t pri;
+    uint8_t core;
+    uint8_t dire;
+    uint8_t nature;
+    uint32_t events;
+    int apid;
+    int timeout;
+    int sockid;
+    qepoll_data_t data;
+#ifdef QVDEB
+    int      flow_st;
+    uint64_t time_sp;
+#endif
+    struct qepoll_event *next;
+};
+
+struct evmgt_queue
+{
+    struct qepoll_event *events;
+    int num;
+    int p;
+};
+typedef struct evmgt_queue *evmgtq_t;
+
+struct event_mgt
+{
+    int size;	// max size of event queue
+    int lb;
+    struct evmgt_queue events_h;
+    struct evmgt_queue events_l;
+};
+typedef struct event_mgt *evmgt_t;
+
+
+void
+q_init_manager(int stack, int server);
+
+/**
+ * initialize qepoll struct and allocate memory
+ * @param[in]	 size  	max size of queue
+ * @return		 efd of the event; -1 if the create operation fails
+ * @ref 		 qepoll.h
+ */
+int
+qepoll_create(qapp_t app, uint32_t size);
+
+/**
+ * wait for events in polling/coroutine mode
+ * @param[in]	 app  		max size of queue
+ * @param[in]	 events  	qepoll events data structures
+ * @param[in]	 maxevents  the maximum number of the events can be fetched
+ * @param[in]	 timeout  	the timeout of qepoll wait for events
+ * @return		 events number to be processed; -1 means timeout
+ * @ref 		 qepoll.h
+ * @see
+ * @note
+ */
+int
+qepoll_wait(qapp_t app, struct qepoll_event *events, int maxevents, int timeout);
+  
+/**
+ * wait epoll events with explicit priority
+ *
+ * @param[in]	 efd  		max size of queue
+ * @param[out]	 events_h	the waited high-priority events
+ * @param[out]	 events_l	the waited low-priority events
+ * @param[in]	 maxevents  the maximum number of the events can be fetched
+ * @param[out]	 high_num	the num of high-priority event ewaited out
+ * @param[out]	 low_num	the num of low-priority event ewaited out
+ * @param[in]	 timeout  	the timeout of qepoll wait for events
+ * @return
+ * 	return the total number of events to be processed; return -1 if timeout
+ */
+int
+qepoll_wait_pri(int efd, struct qepoll_event *events_h,
+                struct qepoll_event *events_l, int maxevents, int *high_num,
+                int *low_num, int timeout);
+
+/**
+ * add, delete and modify events types
+ * @param[in]    app_id     app id
+ * @param[in]	 efd		qepoll file descriptor id
+ * @param[in]	 op 		the operation for modify events states
+ * @param[in]	 sockid		socket id of the event
+ * @param[in]	 events		qepoll events data structures
+ * @return		 events number to be processed; -1 means timeout
+ * @ref 		 qepoll.h
+ * @see
+ * @note
+ */
+int
+qepoll_ctl(int app_id, int fd, int op, unsigned long long allNow, struct qepoll_event *event);
+
+struct qepoll_event*
+eventmgt_get(int efd, struct event_mgt *mgt);
+
+void
+eventmgt_init(evmgt_t evmgt, int maxsize, int lb);
+
+
+#endif
+
+
+
+/******************************************************************************/
+/* global function declarations
+***************************************************************************** */
+uint8_t
+get_app_id(qapp_t app);
+
+uint8_t
+get_core_id(qapp_t app);
+
+qapp_t
+get_qapp_by_id(int core_id);
+
+int
+get_max_concurrency();
+
+int
+get_num_server();
+
+void
+qstack_config_init(unsigned stack, unsigned app);
+
+
+static inline void
+q_register_pkt_filter(int(*func)(mbuf_t))
+{
+	driver_pri_filter = func;
+}
+
+/**
+ * get rss result according to the src/dst ip_addr and tcp_port
+ *
+ * @param saddr		source ip address and tcp port, in ipv4 format
+ * @param daddr		dest ip address and tcp port, in ipv4 format
+ *
+ * @return
+ * 	the id of the stack this connection belongs to
+ */
+uint32_t
+get_rss_core(struct sockaddr_in *saddr, struct sockaddr_in *daddr);
+
+/******************************************************************************/
+/* EPOLL-related function declarations
+***************************************************************************** */
+
+
+
 /******************************************************************************/
 /* function declarations */
-/*----------------------------------------------------------------------------*/
-extern int(*driver_pri_filter)(mbuf_t mbuf);
 /*----------------------------------------------------------------------------*/
 // socket process
 /**
@@ -175,6 +427,24 @@ q_connect(qapp_t app, int sockid, const struct sockaddr *addr,
 mbuf_t
 q_recv(qapp_t app, int sockid, char **buf, ssize_t *len, uint8_t flags);
 
+
+/**
+ * set host IP address
+ *
+ * @param addr 	host ip address (in "xxx.xxx.xxx.xxx" type)
+ *
+ * @return NULL
+ */
+
+/*
+#ifndef __BBB__
+inline 
+#endif
+*/
+
+//static inline
+void host_ip_set(const char *addr);
+
 /**
  * get a free mbuf to be writen and sent out
  *
@@ -186,13 +456,57 @@ q_recv(qapp_t app, int sockid, char **buf, ssize_t *len, uint8_t flags);
  * @return
  * 	return a writable mbuf if success; otherwise return NULL
  */
-static inline mbuf_t
-q_get_wmbuf(qapp_t app, uint8_t **buff, int *max_len)
-{
-	// TODO: app_id is better
-	mbuf_t mbuf = io_get_wmbuf(app->core_id, buff, max_len, 1);
-	return mbuf;
-}
+
+mbuf_t
+q_get_wmbuf(qapp_t app, uint8_t **buff, int *max_len);
+
+
+/**
+ * free the used mbuf 
+ *
+ * @param core_id	core_id of the core where the function is called
+ * @param mbuf		target mbuf to be freed
+ *
+ * @return null
+ */
+void
+q_free_mbuf(int core_id, mbuf_t mbuf);
+
+/**
+ * set the function to detect if a packet is the head of a message
+ *
+ * @param sockid		sockid of target socket
+ * @param func			pointer of the requst head detect function
+ *
+ * @return null
+ *
+ * @note
+ *  The function input a string with type of char* (usually the start of an 
+ *  mbuf payload). The function return TRUE if the string do be the head of a 
+ *  message, otherwith return FALSE.
+ */
+
+void
+q_sockset_req_head(int sockid, int (*func)(char*));
+
+/**
+ * set the function to check if a message is with high priority
+ *
+ * @param sockid		sockid of the target socket
+ * @param func			pointer of the high-priority check function
+ *
+ * @return null
+ *
+ * @note
+ *  The function input a message with type of char*. The function return TRUE 
+ *  if the message is with high priority, otherwith return FALSE.
+ * @note
+ * 	If the req_head check function is not set, the high-priority check function 
+ * 	will check every packet's payload in default.
+ */
+
+void
+q_sockset_req_high(int sockid, int (*func)(char*));
 
 /**
  * send an mbuf to snd_buff
@@ -211,37 +525,12 @@ q_get_wmbuf(qapp_t app, uint8_t **buff, int *max_len)
  * @note
  * 	the mbuf to be sent should be allocated by calling q_get_wmbuf()
  */
-static inline int
-q_write(qapp_t app, int sockid, mbuf_t mbuf, uint32_t len, uint8_t flags)
-{
-	TRACE_CHECKP("q_write() was called @ Core %d @ Socket %d\n", 
-			app->core_id, sockid);
-	DSTAT_ADD(get_global_ctx()->write_called_num[app->core_id], 1);
-	tcp_stream_t cur_stream; 
-	int ret = -2;
-	if (sockid < 0 || sockid >= CONFIG.max_concurrency) {
-		TRACE_EXCP("Socket id %d out of range.\n", sockid);
-		errno = EBADF;
-		return -1;
-	}
-	cur_stream = get_global_ctx()->socket_table->sockets[sockid].stream;
-	if (!cur_stream) {
-		TRACE_EXCP("no available stream in socket!");
-		errno = EBADF;
-		return -1;
-	}
-    
-	if (flags & QFLAG_SEND_HIGHPRI) {
-		mbuf->priority = 1;
-	} else {
-		mbuf->priority = 0;
-	}
-	
-	{
-		ret = _q_tcp_send(app->core_id, sockid, mbuf, len, flags);
-	}
-	return ret;
-}
+
+int
+q_send(qapp_t app, int sockid, mbuf_t mbuf, uint32_t len, uint8_t flags);
+
+//static inline 
+
 
 /**
  * send data with iovec
@@ -258,7 +547,7 @@ q_write(qapp_t app, int sockid, mbuf_t mbuf, uint32_t len, uint8_t flags)
  * 	return -1 if failed, and set ERRNO
  */
 int
-q_writev(qapp_t app, int sockid, struct iovec *iov, int iovcnt, uint8_t flags);
+q_sendv(qapp_t app, int sockid, struct iovec *iov, int iovcnt, uint8_t flags);
 
 /** 
  * close the socket
@@ -290,153 +579,9 @@ q_close(qapp_t app, int sockid);
 int 
 q_socket_ioctl(qapp_t app, int sockid, int request, void *argp);
 
-/**
- * free the used mbuf 
- *
- * @param core_id	core_id of the core where the function is called
- * @param mbuf		target mbuf to be freed
- *
- * @return null
- */
-static inline void
-q_free_mbuf(int core_id, mbuf_t mbuf)
-{
-	if (mbuf) {
-#ifdef PRIORITY_RECV_BUFF
-		if (mbuf->priority && mbuf->holding) {
-			// the high-pri mbuf should be recieved by user only once, and 
-			// should always not be freed
-			// TODO: may not be multi-thread safe
-			mbuf->holding = 0;
-			return;
-		}
-#endif
-		mbuf_set_op(mbuf, MBUF_OP_RCV_UFREE, core_id);
-		DSTAT_ADD(get_global_ctx()->request_freed[core_id], 1);
-		mbuf_free(core_id, mbuf);
-	} else {
-		TRACE_EXCP("try to free empty mbuf at Core %d!\n", core_id);
-	}
-}
 
-static inline uint32_t
-q_virtual_process(uint64_t delay)
-{
-#if VIRTUAL_TASK_DELAY_MODE
-	uint64_t i;
-	uint32_t a, b;
-	uint64_t loop_time = delay * 23 / 15;
-
-	a = 1;
-	b = 1;
-	for (i=0; i<loop_time; i++) {
-		b = a + b;
-		b = a + b;
-		a = b - a;
-		b = b - a;
-	}
-	return a;
-#else
-	return 0;
-#endif
-}
-
-/**
- * set the function to detect if a packet is the head of a message
- *
- * @param sockid		sockid of target socket
- * @param func			pointer of the requst head detect function
- *
- * @return null
- *
- * @note
- *  The function input a string with type of char* (usually the start of an 
- *  mbuf payload). The function return TRUE if the string do be the head of a 
- *  message, otherwith return FALSE.
- */
-static inline void
-q_sockset_req_head(int sockid, int (*func)(char*))
-{
-	tcp_stream_t cur_stream;
-	if (sockid < 0 || sockid >= CONFIG.max_concurrency) {
-		TRACE_EXCP("Socket id %d out of range.\n", sockid);
-		errno = EBADF;
-		return;
-	}
-	cur_stream = get_global_ctx()->socket_table->sockets[sockid].stream;
-	
-	set_req_head(cur_stream, func);
-}
-
-/**
- * set the function to check if a message is with high priority
- *
- * @param sockid		sockid of the target socket
- * @param func			pointer of the high-priority check function
- *
- * @return null
- *
- * @note
- *  The function input a message with type of char*. The function return TRUE 
- *  if the message is with high priority, otherwith return FALSE.
- * @note
- * 	If the req_head check function is not set, the high-priority check function 
- * 	will check every packet's payload in default.
- */
-static inline void
-q_sockset_req_high(int sockid, int (*func)(char*))
-{
-	tcp_stream_t cur_stream;
-	if (sockid < 0 || sockid >= CONFIG.max_concurrency) {
-		TRACE_EXCP("Socket id %d out of range.\n", sockid);
-		errno = EBADF;
-		return;
-	}
-	cur_stream = get_global_ctx()->socket_table->sockets[sockid].stream;
-	
-	set_req_high(cur_stream, func);
-}
-
-/**
- * register the priority filter function for pakcet-level priority
- * classification at driver layer
- *
- * @param func		the filter function
- *
- * @return NULL
- */
-static inline void
-q_register_pkt_filter(int(*func)(mbuf_t))
-{
-	driver_pri_filter = func;
-}
-
-/**
- * set host IP address
- *
- * @param addr 	host ip address (in "xxx.xxx.xxx.xxx" type)
- *
- * @return NULL
- */
-static inline void
-host_ip_set(const char *addr)
-{
-	CONFIG.eths[0].ip_addr = inet_addr(addr);
-}
-
-/**
- * get rss result according to the src/dst ip_addr and tcp_port
- *
- * @param saddr		source ip address and tcp port, in ipv4 format
- * @param daddr		dest ip address and tcp port, in ipv4 format
- *
- * @return
- * 	the id of the stack this connection belongs to
- */
-uint32_t
-get_rss_core(struct sockaddr_in *saddr, struct sockaddr_in *daddr);
 /******************************************************************************/
 #ifdef __cplusplus
-//};
+};
 #endif
 #endif //#ifdef __API_H_

@@ -42,6 +42,9 @@ INC += ${QTOOL_INC}
 INC += ${QCORO_INC}
 INC += ${QMEM_INC}
 
+ 
+#CFLAGS += -D INLINE_DISABLED
+
 #TODO: zhangzhao
 DPDK_MACHINE_FLAGS = $(shell cat ../dpdk-lnk/include/cflags.txt)
 INC += ${DPDK_MACHINE_FLAGS} -I${DPDK_INC} -include $(DPDK_INC)/rte_config.h

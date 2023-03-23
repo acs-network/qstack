@@ -5,14 +5,14 @@ TARGETS=runme
 QSTACK_LIB_DIR=../lib
 QSTACK_LIB=libqstack.a
 QSTACK_HDR_DIR=../include
-QSTACK_HDR = qstack.h api.h io_module.h
+QSTACK_HDR = api.h
 
 
 ### GCC ###
 GCC=gcc
 
-GCC_OPT = -w -g -O3 -m64 -DNDEBUG -lssl -lcrypto
-#GCC_OPT += -Wall -fPIC -fgnu89-inline -z muldefs 
+GCC_OPT = -w -g -O3 -m64 -DNDEBUG -lssl -lcrypto 
+#CFLAGS += -D INLINE_DISABLED
 #GCC_OPT += $(DBG_OPT)
 
 ### LIBRARIES AND INCLUDES ###
@@ -36,6 +36,8 @@ QCORO_LIB    =-L${QCORO_FLD}/lib
 # DPDK LIBRARY and HEADER
 DPDK_INC=../../dpdk-lnk/include
 DPDK_LIB=../../dpdk-lnk/lib
+
+$(shell cp api_inner.c ./include)
 
 #TODO: zhangzhao
 DPDK_MACHINE_FLAGS = $(shell cat ../../dpdk-lnk/include/cflags.txt)
@@ -69,14 +71,15 @@ endif
 ### GOALS ###
 all: default
 
-default: $(OBJS) $(QSTACK_HDR)
+default: $(OBJS) $(QSTACK_HDR) 
 	mkdir -p $(QSTACK_LIB_DIR)
 	ar rvs $(QSTACK_LIB_DIR)/$(QSTACK_LIB) $(OBJS)
-
+#	rm -f ./include/api_inner.c
+	
 $(OBJS): %.o: %.c Makefile
 	$(MSG) "   CC $<"
 #	$(HIDE) 
-	$(GCC) $(GCC_OPT) $(INC) -c $< -o $@
+	$(GCC) $(GCC_OPT) $(INC) -c  $(CFLAGS) $< -o $@
 $(DEPS): .%.d: %.c Makefile
 #	$(HIDE) 
 	$(GCC) $(GCC_OPT) $(INC) -MM $(CFLAGS) $< > $@
@@ -86,7 +89,7 @@ $(DEPS): .%.d: %.c Makefile
 $(QSTACK_HDR):
 	mkdir -p $(QSTACK_HDR_DIR)
 	cp $(INC_DIR)/$@ $(QSTACK_HDR_DIR)/$@
-
+	
 clean: clean-library
 	rm -f *.o *~ core
 	rm -f .*.d
@@ -94,6 +97,7 @@ clean: clean-library
 clean-library:
 	rm -f $(QSTACK_LIB_DIR)/*
 	rm -f $(QSTACK_HDR_DIR)/*
+	rm -f ./include/api_inner.c
 
 distclean: clean
 	rm -f Makefile
