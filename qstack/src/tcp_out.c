@@ -227,7 +227,7 @@ static inline int
 ack_queue_add(qstack_t qstack, tcp_stream_t cur_stream)
 {
 	int ret = SUCCESS;
-	if (!cur_stream->sndvar.on_ack_queue) {
+	if (cur_stream->sndvar.ack_cnt && !cur_stream->sndvar.on_ack_queue) {
 		sender_t sender = get_sender(qstack, cur_stream);
 		assert(sender != NULL);
 
@@ -235,6 +235,13 @@ ack_queue_add(qstack_t qstack, tcp_stream_t cur_stream)
 		// ret = SUCCESS if success, or ERROR if the queue is full
 		if (ret == SUCCESS) {
 			cur_stream->sndvar.on_ack_queue = TRUE;
+#if QDBG_OOO
+			cur_stream->ackq_add_cnt++;
+#endif
+		} else {
+			TRACE_EXCP("failed to add to ack_queue @ Stream %d\n", 
+					cur_stream->id);
+
 		}
 	}
 	return ret;
@@ -413,6 +420,9 @@ send_tcp_packet(qstack_t qstack, tcp_stream_t cur_stream, uint32_t cur_ts,
 		rto_list_add(qstack, cur_stream, cur_ts);
 	}
 #if QDBG_OOO
+	else {
+		cur_stream->ack_out_cnt++;
+	}
 	cur_stream->last_ack_ts = get_time_ns();
 #endif
 	if (tcph->syn) {
@@ -786,7 +796,7 @@ enqueue_ack(qstack_t qstack, tcp_stream_t cur_stream, uint8_t opt)
 	}
 
 	if (opt == ACK_OPT_NOW) {
-		if (cur_stream->sndvar.ack_cnt < cur_stream->sndvar.ack_cnt + 1) {
+		if (cur_stream->sndvar.ack_cnt < 63) { // avoid bitfild overflow
 			cur_stream->sndvar.ack_cnt++;
 		}
 	} else if (opt == ACK_OPT_AGGREGATE) {
@@ -975,7 +985,11 @@ write_tcp_ack_queue(qstack_t qstack, uint32_t cur_ts)
 	/* Send aggregated acks */
 	while (cnt < MAX_ACK_PKT_BATCH && 
 			(cur_stream = sstreamq_dequeue(ack_queue)) != NULL) {
+#if QDBG_OOO
+		cur_stream->ackq_get_cnt++;
+#endif
 		if (cur_stream->sndvar.on_ack_queue) {
+			cur_stream->sndvar.on_ack_queue = FALSE;
 			/* this list is only to ack the data packets */
 			/* if the ack is not data ack, then it will not process here */
 			to_ack = FALSE;
@@ -1004,6 +1018,8 @@ write_tcp_ack_queue(qstack_t qstack, uint32_t cur_ts)
 							cur_ts, TCP_FLAG_ACK, NULL, 0);
 					if (ret != SUCCESS) {
 						/* since there is no available write buffer, break */
+						TRACE_EXCP("failed to generate ack packet @ Stream %d\n", 
+								cur_stream->id);
 						break;
 					} else {
 						cnt++;
@@ -1018,16 +1034,17 @@ write_tcp_ack_queue(qstack_t qstack, uint32_t cur_ts)
 							cur_ts, TCP_FLAG_ACK | TCP_FLAG_WACK, NULL, 0);
 					if (ret != SUCCESS) {
 						/* since there is no available write buffer, break */
+						TRACE_EXCP("failed to generate wack packet @ Stream %d\n", 
+								cur_stream->id);
 						cur_stream->sndvar.is_wack = TRUE;
 					} else {
 						cnt++;
 					}
 				}
 
-				if (!(cur_stream->sndvar.ack_cnt || cur_stream->sndvar.is_wack)) {
-					cur_stream->sndvar.on_ack_queue = FALSE;
-				}
 			} else {
+				TRACE_EXCP("to_ack is 0 @ Stream %d\n", 
+						cur_stream->id);
 				cur_stream->sndvar.on_ack_queue = FALSE;
 				cur_stream->sndvar.ack_cnt = 0;
 				cur_stream->sndvar.is_wack = 0;
