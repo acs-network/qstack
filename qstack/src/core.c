@@ -57,7 +57,6 @@
 #endif
 /*----------------------------------------------------------------------------*/
 #include "qstack.h"
-#include "api.h"
 #include "timestamp.h"
 #include "dpdk_module.h"
 #include "eth_in.h"
@@ -69,6 +68,7 @@
 #include <stdio.h>  
 #include <sys/types.h>  
 #include <sys/syscall.h> 
+#include "api.h"
 /******************************************************************************/
 /* local macros */
 /******************************************************************************/
@@ -564,7 +564,7 @@ __print_network_state()
 			"==========App calls:\n"
 			"accepted_num:\t\t%16u\n"
 			"q_recv() called:\t%16u\n"
-			"q_write() called:\t%16u\n"
+			"q_send() called:\t%16u\n"
 			"q_close() called:\t%16u\n"
 			"==========Qevent statistic:\n"
 			"high event_queuing num:\t%16u\n"

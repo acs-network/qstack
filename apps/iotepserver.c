@@ -503,9 +503,9 @@ process_requests(void *cluster,struct app_buffer *abuff)
 	mbuf_print_detail(mbuf);
 
 
-	ret = q_write(qapp_thread + id, sockid, mbuf, 146, 0);
+	ret = q_send(qapp_thread + id, sockid, mbuf, 146, 0);
 	if  (ret != 146){
-	    TRACE_EXCP("failed q_write() @ Socket %u, ret:%d, errno: %d\n", 
+	    TRACE_EXCP("failed q_send() @ Socket %u, ret:%d, errno: %d\n", 
 				sockid, ret, errno);
 	}else{	
 	    g_stats[id].responses_counter += 1;
