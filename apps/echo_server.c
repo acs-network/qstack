@@ -163,7 +163,27 @@ static int nb_processors;
 static pthread_t app_thread[MAX_CPUS];
 static struct sthread_args server_thread[MAX_CPUS];
 static int done[MAX_CPUS];
+static inline uint32_t
+q_virtual_process(uint64_t delay)
+{
+#if VIRTUAL_TASK_DELAY_MODE
+	uint64_t i;
+	uint32_t a, b;
+	uint64_t loop_time = delay * 23 / 15;
 
+	a = 1;
+	b = 1;
+	for (i=0; i<loop_time; i++) {
+		b = a + b;
+		b = a + b;
+		a = b - a;
+		b = b - a;
+	}
+	return a;
+#else
+	return 0;
+#endif
+}
 int 
 redis_packet_pri_filter(mbuf_t mbuf)
 {
@@ -338,9 +358,9 @@ HandleReadEvent(struct thread_context *ctx, int sockid, struct server_vars *sv, 
 //			mbuf_print_detail(send_mbuf);
 	
 			/* send out the prepared response mbuf */
-			ret = q_write(ctx->qapp, sockid, send_mbuf, len, pri);
+			ret = q_send(ctx->qapp, sockid, send_mbuf, len, pri);
 			if (ret != len) {
-				TRACE_EXCP("q_write() failed @Socket %u, "
+				TRACE_EXCP("q_send() failed @Socket %u, "
 						"ret:%d, errno: %d\n", sockid, ret, errno);
 			}
 		}

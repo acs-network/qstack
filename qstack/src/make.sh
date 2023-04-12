@@ -31,4 +31,4 @@ make clean
 make -j20
 cd $QINGYUN_HOME/apps
 make clean
-sudo make -j20
+make -j20

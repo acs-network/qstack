@@ -51,10 +51,13 @@
 #endif
 #define N21Q_DEQUEUE_STRONG
 /*----------------------------------------------------------------------------*/
-#include "api.h"
+#define _GNU_SOURCE
+#include <sched.h>
+
 #include "tcp_out.h"
 #include <sys/ioctl.h>
 #include <rte_thash.h>
+#include "api.h"
 /******************************************************************************/
 /* local macros */
 /******************************************************************************/
@@ -592,8 +595,10 @@ q_socket_ioctl(qapp_t app, int sockid, int request, void *argp)
 	return 0;
 }
 
+
+
 int
-q_writev(qapp_t app, int sockid, struct iovec *iov, int iovcnt, uint8_t flags)
+q_sendv(qapp_t app, int sockid, struct iovec *iov, int iovcnt, uint8_t flags)
 {
 	mbuf_t mbuf = NULL;
 	uint32_t len = 0;
@@ -611,7 +616,7 @@ q_writev(qapp_t app, int sockid, struct iovec *iov, int iovcnt, uint8_t flags)
 	for (i=0; i<iovcnt; i++) {
 		if (offset+iov[i].iov_len > len) {
 			// if one packet is full
-			ret += q_write(app, sockid, mbuf, offset, flags);
+			ret += q_send(app, sockid, mbuf, offset, flags);
 			mbuf = q_get_wmbuf(app, &buff, &len);
 			if (!mbuf)  {
 				break;
@@ -621,7 +626,7 @@ q_writev(qapp_t app, int sockid, struct iovec *iov, int iovcnt, uint8_t flags)
 		memcpy(buff+offset, iov[i].iov_base, iov[i].iov_len);
 		offset += iov[i].iov_len;
 	}
-	ret += q_write(app, sockid, mbuf, offset, flags);
+	ret += q_send(app, sockid, mbuf, offset, flags);
 	return ret;
 }
 
@@ -657,5 +662,51 @@ get_rss_core(struct sockaddr_in *saddr, struct sockaddr_in *daddr)
 			rss, CONFIG.num_stacks, ret);
 	return ret;
 }
+/******************************************************************************/
+uint8_t
+get_app_id(qapp_t app)
+{
+if(app)
+	return app->app_id;
+else
+	TRACE_EXIT("Invalid qapp.\n");
+}
+
+uint8_t
+get_core_id(qapp_t app)
+{
+	if(app)
+		return app->core_id;
+	else
+		TRACE_EXIT("Invalid qapp.\n");
+}
+
+qapp_t
+get_qapp_by_id(int core_id)
+{
+return get_core_context(core_id)->rt_ctx->qapp;
+}
+
+int
+get_max_concurrency()
+{
+    return CONFIG.max_concurrency;
+}
+
+int
+get_num_server()
+{
+    return CONFIG.num_servers;
+}
+
+void
+qstack_config_init(unsigned stack, unsigned app)
+{
+    CONFIG.num_cores = stack + app;
+    CONFIG.num_stacks = stack;
+    CONFIG.num_servers = app;
+    CONFIG.num_apps = CONFIG.num_cores;
+}
+
 /******************************************************************************/
 /*----------------------------------------------------------------------------*/

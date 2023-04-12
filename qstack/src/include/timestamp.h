@@ -37,7 +37,7 @@ struct tcp_stream;
 #define REQ_ST_PKTIN 		0 // packet was received from NIC by io_recv_check()
 #define REQ_ST_REQIN 		1 // request was put in the recieve buff
 #define REQ_ST_REQREAD 		2 // request was read in app by q_read
-#define REQ_ST_RSPWRITE 	3 // response was sent from app by q_write()
+#define REQ_ST_RSPWRITE 	3 // response was sent from app by q_send()
 #define REQ_ST_RSPGET		4 // response was get from sndbuf
 //#define REQ_ST_RSPTCPGEN	5 // start to generate response's tcp header
 #define REQ_ST_RSPOUT 		6 // response was sent to driver by io_send_mbuf()
