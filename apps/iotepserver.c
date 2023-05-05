@@ -1000,7 +1000,7 @@ InitializeServerThread(int core)
 	
 	ctx->qapp->core_id = core + core_stack;
 
-	qid = qepoll_create(ctx->qapp, MAX_EVENTS / core_server);
+	qid = qepoll_create(MAX_EVENTS / core_server);
 	
 	return ctx;
 }
@@ -1047,7 +1047,7 @@ main(int argc, char **argv)
 	num_cores = 23;//GetNumCPUs();
 	
 	core_stack = MAX_STACK_NUM;
-	CONFIG.num_stacks = core_stack;
+	CONFIG.stack_thread = core_stack;
 	core_server = MAX_STACK_NUM;
 	core_print = 1;
 	
@@ -1055,7 +1055,7 @@ main(int argc, char **argv)
 		switch(o) {
 		case 's':
 			core_stack = get_num(optarg);
-			CONFIG.num_stacks = core_stack;
+			CONFIG.stack_thread = core_stack;
 			break;
 		case 'a':
 			core_server = get_num(optarg);
@@ -1088,9 +1088,9 @@ main(int argc, char **argv)
     nb_processors = WORKER_PER_SERVER * core_server;
     struct app_buffer buffer[nb_processors];
 	
-    CONFIG.num_servers = core_server;
+    CONFIG.app_thread = core_server;
 
-    CONFIG.num_apps = core_server + nb_processors;
+    //CONFIG.num_apps = core_server + nb_processors;
     
     CONFIG.num_cores = core_stack + core_server + nb_processors;
 	num_cores = CONFIG.num_cores;

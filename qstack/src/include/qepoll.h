@@ -287,7 +287,7 @@ GetTickMS();
  * @note
  */
 int 
-qepoll_create(qapp_t app, uint32_t size);
+qepoll_create(uint32_t size);
 
 /** 
  * wait for events in polling/coroutine mode

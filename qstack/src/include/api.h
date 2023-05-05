@@ -304,9 +304,8 @@ get_max_concurrency();
 int
 get_num_server();
 
-void
-qstack_config_init(unsigned stack, unsigned app);
-
+struct qstack_conf*
+qstack_getconf(char *cfg_file);
 
 static inline void
 q_register_pkt_filter(int(*func)(mbuf_t))

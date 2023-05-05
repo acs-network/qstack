@@ -418,7 +418,7 @@ chan_t q_alloc_achan(int s,int a,int isize)
  * @note
  */
 int 
-qepoll_create(qapp_t app, uint32_t size)
+qepoll_create(uint32_t size)
 {
 	int i,nc,qid;
 	qepoll_t qe;
@@ -436,22 +436,26 @@ qepoll_create(qapp_t app, uint32_t size)
 		return -1;
 	}*/
 
-	qtx = g_qepoll[app->app_id];
+	qtx = g_qepoll[qconf->efd];
 	qe = qtx->qe;
 	if (!qe) {
 		return -1;
 	}
 	
-	TRACE_INIT("qepoll structure of size %d created.\n", size);
 
 	//socket->qe = qe;
 
 	/* create event queues and channels*/
-	qe->size = size;
+	qe->size = CONFIG.max_concurrency / CONFIG.app_thread;
+
+	TRACE_INIT("qepoll structure of size %d created.\n", qe->size);
+
 	qe->sq_chan = qtx->sq_chan;
 	qe->qs_chan = qtx->qs_chan;
 
-	return ++qconf->efd;
+	qid = qconf->efd++;
+
+	return qid;
 }
 
 int 
@@ -1328,7 +1332,7 @@ qconf_init(int stack, int server, int app)
 	qconf->num_server  = server;
 	qconf->num_stack  = stack;
 	qconf->num_app = app;
-	qconf->efd = -1;
+	qconf->efd = 0;
 }
 
 chan_t

@@ -584,7 +584,7 @@ io_free_mbuf(int core_id, mbuf_t mbuf)
 void *
 io_checkloops(void *args)
 {
-    int max_stacks = CONFIG.num_stacks;
+    int max_stacks = CONFIG.stack_thread;
     //assert(max_stack == 2);
     int i = 0;
     while(1){

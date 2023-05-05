@@ -116,7 +116,7 @@ struct route_table
 	int nif;
 };
 
-struct config
+struct qstack_config
 {
     /* socket mode */
 	uint8_t socket_mode;
@@ -137,8 +137,8 @@ struct config
 	struct arp_table *arp_tables[FULL_ARP_TABLE_SIZE];
 
 	int num_cores;		///< num of total cores
-	int num_stacks;		///< num of stack cores
-	int num_apps;		///< num of application cores
+	int stack_thread;		///< num of stack cores
+	int app_thread;		///< num of application cores
 	int num_servers;	///< num of server listening and calling q_accept()
 	int num_mem_ch;
 	int max_concurrency;
@@ -151,6 +151,8 @@ struct config
 	int tcp_timewait;
 	int tcp_timeout;
 
+	int pri;
+
 	/* adding multi-process support */
 	uint8_t multi_process;
 	uint8_t multi_process_is_master;
@@ -162,7 +164,7 @@ struct config
   	uint16_t onvm_dest;
 #endif
 };
-extern struct config CONFIG;
+extern struct qstack_config CONFIG;
 
 /** context for every send device(NIC port) */
 struct sender_context
@@ -357,12 +359,10 @@ struct qstack_context_global
 /**
  * init the whole qstack system, entrance of user application	
  *
- * @param stack_num 	num of stack threads
- *
- * @return null
+ * @return qapp_t*
  */
-void 
-qstack_init(int stack_num);
+qapp_t* 
+qstack_init();
 
 /**
  * create an application thread, and pin it to the target core

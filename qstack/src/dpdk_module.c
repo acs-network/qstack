@@ -406,13 +406,13 @@ dpdk_load_module(void)
         sprintf(clone_name, "clone_name_pool-%d", lcore_id);
         
         sprintf(ring_name, "ring_name_pool-%d", lcore_id);
-        nb_mbuf = MAX_FLOW_PSTACK >> MEM_SCALE;//CONFIG.max_concurrency / CONFIG.num_cores;//400000;
+        nb_mbuf = (CONFIG.max_concurrency / CONFIG.stack_thread) >> MEM_SCALE;//CONFIG.max_concurrency / CONFIG.num_cores;//400000;
         while(ring_count < nb_mbuf)
         {
             ring_count = ring_count * 2;
         }
         /* create the mbuf pools */
-        if(lcore_id < CONFIG.num_stacks)
+        if(lcore_id < CONFIG.stack_thread)
         {
             rx_pktmbuf_pool[lcore_id] = rte_pktmbuf_pool_create_by_ops(rx_name,
                 nb_mbuf, 0, 0,
@@ -433,7 +433,7 @@ dpdk_load_module(void)
             tx_pktmbuf_pool[lcore_id] = NULL;
         }
         int nb_alloc_num = 0;//MAX_FLOW_NUM/MAX_CORE_NUM;
-        nb_alloc_num = (MAX_FLOW_NUM/CONFIG.num_stacks)>>MEM_SCALE;//CONFIG.max_concurrency / CONFIG.num_cores;//400000;
+        nb_alloc_num = (MAX_FLOW_NUM/CONFIG.stack_thread)>>MEM_SCALE;//CONFIG.max_concurrency / CONFIG.num_cores;//400000;
         pktmbuf_alloc_pool[lcore_id] = rte_pktmbuf_pool_create_by_ops(alloc_name,
                  nb_alloc_num, 0, 0,
                  RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id(),"ring_sp_sc");
@@ -454,7 +454,7 @@ dpdk_load_module(void)
         /* init port */
 
         fflush(stdout);
-        ret = rte_eth_dev_configure(portid, CONFIG.num_stacks, CONFIG.num_stacks, &port_conf_default);
+        ret = rte_eth_dev_configure(portid, CONFIG.stack_thread, CONFIG.stack_thread, &port_conf_default);
         if (ret < 0)
         {
             rte_exit(EXIT_FAILURE, "Cannot configure device: err=%d, port=%u\n",
@@ -476,7 +476,7 @@ dpdk_load_module(void)
         int rxqueue_id = 0;
         int txqueue_id = 0;
         int port = 0;
-        for (rxqueue_id = 0; rxqueue_id < CONFIG.num_stacks; rxqueue_id++) 
+        for (rxqueue_id = 0; rxqueue_id < CONFIG.stack_thread; rxqueue_id++) 
         {
             ret = 0;    
             TRACE_INFO("MAX_STACK_THREAD is  %d int rte_eth_rx_queue_setup mbuf pool is 0x%x \n",MAX_STACK_THREAD,rx_pktmbuf_pool[rxqueue_id]);
@@ -499,7 +499,7 @@ dpdk_load_module(void)
 
         struct rte_eth_txconf *txconf;
 
-        for (txqueue_id = 0; txqueue_id < CONFIG.num_stacks; txqueue_id++) {
+        for (txqueue_id = 0; txqueue_id < CONFIG.stack_thread; txqueue_id++) {
 
             txconf = &dev_info.default_txconf;
             txconf->tx_free_thresh = 0;
@@ -562,7 +562,7 @@ dpdk_load_module(void)
 	CONFIG.eths[portid].haddr[4] = addr.addr_bytes[4];
 	CONFIG.eths[portid].haddr[5] = addr.addr_bytes[5];
 
-	rss_filter_init(CONFIG.num_stacks, 0);
+	rss_filter_init(CONFIG.stack_thread, 0);
 }
 /*----------------------------------------------------------------------------*/
 static inline int 

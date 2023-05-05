@@ -56,7 +56,7 @@
 //	#define TRACE_LEVEL	TRACELV_DEBUG
 #endif
 /*----------------------------------------------------------------------------*/
-#include "qstack.h"
+#include "config.h"
 #include "timestamp.h"
 #include "dpdk_module.h"
 #include "eth_in.h"
@@ -75,7 +75,6 @@
 /* glbal variables */
 g_ctx_t g_qstack;
 struct q_statistic q_stat;
-struct config CONFIG = {0};
 ts_t ts_system_init;
 #if STAGE_TIMEOUT_TEST_MODE
 uint64_t last_recv_check_ts = 0;
@@ -238,7 +237,7 @@ gctx_init()
 
     printf("gctx-socket_table address is %p \n",gctx->socket_table);
 
-	for (i=0; i<CONFIG.num_stacks; i++) {
+	for (i=0; i<CONFIG.stack_thread; i++) {
 		gctx->stream_ht[i] = ht_create(MAX_FLOW_PSTACK+i);
 		TRACE_PROC(" gctx->stream_ht[i] is %p \n", gctx->stream_ht[i]);
 	}
@@ -249,28 +248,28 @@ gctx_init()
 	TRACE_CHECKP("begin to create global mempools\n");
 	csize = sizeof(struct tcp_listener);
 	gctx->mp_listener = mempool_create(csize, 10, 10, 
-			CONFIG.num_stacks);
+			CONFIG.stack_thread);
 	printf("gctx->mp_listener %x \n",gctx->mp_listener);
 	if (gctx->mp_listener) {
 		TRACE_MEMORY("mp_listener create done, "
 				"chunk_size: %d, chunk_num: %d, mp_num: %d\n",
-				csize, 10, CONFIG.num_stacks);
+				csize, 10, CONFIG.stack_thread);
 	} else {
 		TRACE_ERR("mp_listener create failed!, "
 				"chunk_size: %d, chunk_num: %d, mp_num: %d\n",
-				csize, 10, CONFIG.num_stacks);
+				csize, 10, CONFIG.stack_thread);
 	}
 	csize = sizeof(struct tcp_stream);
 	gctx->mp_stream = mempool_create(csize, MAX_FLOW_PSTACK, 
-			0, CONFIG.num_stacks); 
+			0, CONFIG.stack_thread); 
 	if (gctx->mp_stream) {
 		TRACE_MEMORY("mp_stream create done, "
 				"chunk_size: %d, chunk_num: %d, mp_num: %d+1\n",
-				csize, MAX_FLOW_PSTACK, CONFIG.num_stacks);
+				csize, MAX_FLOW_PSTACK, CONFIG.stack_thread);
 	} else {
 		TRACE_ERR("mp_stream create failed!, "
 				"chunk_size: %d, chunk_num: %d, mp_num: %d+1\n",
-				csize, MAX_FLOW_PSTACK, CONFIG.num_stacks);
+				csize, MAX_FLOW_PSTACK, CONFIG.stack_thread);
 	}
 }
 
@@ -280,7 +279,7 @@ sender_init()
 {
 	sender_t sender = (sender_t)calloc(1, sizeof(struct sender_context));
 	sstreamq_init(&sender->control_queue, MAX_FLOW_NUM>>(2+MEM_SCALE));
-//	sstreamq_init(&sender->send_queue, CONFIG.num_stacks, MAX_FLOW_NUM);
+//	sstreamq_init(&sender->send_queue, CONFIG.stack_thread, MAX_FLOW_NUM);
 	sstreamq_init(&sender->ack_queue, MAX_FLOW_NUM>>(2+MEM_SCALE));
 	return sender;
 }
@@ -484,7 +483,7 @@ __print_network_state()
 	static uint64_t byte_in_pre = 0;
 	static uint64_t byte_out_pre = 0;
 
-	for (i=0; i<CONFIG.num_stacks; i++) {
+	for (i=0; i<CONFIG.stack_thread; i++) {
 		qstack = get_stack_context(i);
 		if (!qstack) {
 			return;
@@ -656,7 +655,7 @@ __print_network_state()
 	TRACE_SCREEN("============================================================\n");
 	#endif
 	#ifdef STATISTIC_FORWARD_BUFF_LEN
-	for (i=0; i<CONFIG.num_stacks*WORKER_PER_SERVER; i++) {
+	for (i=0; i<CONFIG.stack_thread*WORKER_PER_SERVER; i++) {
 		TRACE_SCREEN("redis forward buff %d max: %d\n", 
 				i, get_global_ctx()->forward_buff_len[i]);
 		get_global_ctx()->forward_buff_len[i] = 0;
@@ -847,11 +846,13 @@ qstack_thread_start(qstack_t qstack)
 }
 /******************************************************************************/
 /* functions */
-void 
-qstack_init(int stack_num)
+qapp_t* 
+qstack_init()
 {
 	int i;
+	int stack_num, app_num;
 	qstack_t qstack;
+	qapp_t *qapp;
 	init_system_ts();	// basic timestamp when system start
 	fp_log = fopen(LOG_PATH, "w");
 	fp_screen = fopen(SCREEN_PATH, "w");
@@ -867,33 +868,10 @@ qstack_init(int stack_num)
 //	TRACE_EXIT("tcp_stream size: %d\n", sizeof(struct tcp_stream));
 
 	// TODO: init the config
-	CONFIG.max_concurrency = MAX_FLOW_NUM;
-//	CONFIG.num_cores = MAX_CORE_NUM;
-//	CONFIG.num_stacks = min(CONFIG.num_stacks, MAX_STACK_NUM);
-//	CONFIG.num_stacks = MAX_STACK_NUM;
-//	CONFIG.num_apps = 3;
-//	CONFIG.num_servers = MAX_SERVER_NUM;
 	CONFIG.core_offset = 0;
-	CONFIG.rcvbuf_size = STATIC_BUFF_SIZE;
-	CONFIG.sndbuf_size = STATIC_BUFF_SIZE;
-	CONFIG.eths = (struct eth_table*)calloc(1, sizeof(struct eth_table));
-
-	if (CONFIG.num_cores > MAX_CORE_NUM) {
-		TRACE_ERROR("Wrong CONFIG.num_cores: %d, MAX_CORE_NUM: %d\n",
-				CONFIG.num_cores, MAX_CORE_NUM);
-	}         
-	if (CONFIG.num_stacks > MAX_STACK_NUM) {
-		TRACE_ERROR("Wrong CONFIG.num_stacks: %d, MAX_STACK_NUM: %d\n",
-				CONFIG.num_stacks, MAX_STACK_NUM);
-	}         
-	if (CONFIG.num_servers > MAX_SERVER_NUM) {
-		TRACE_ERROR("Wrong CONFIG.num_servers: %d, MAX_SERVER_NUM: %d\n",
-				CONFIG.num_servers, MAX_SERVER_NUM);
-	}
-
-
-	CONFIG.eths_num = 1;
-	CONFIG.eths[0].ifindex = 0;
+	
+	stack_num = CONFIG.stack_thread;
+	app_num   = CONFIG.app_thread;
 
 	TRACE_LOG("start io_module initialization\n");
 	io_init();
@@ -917,15 +895,18 @@ qstack_init(int stack_num)
     	pthread_create(&qstack->rt_ctx->rt_thread, &attr, qstack_thread_start, 
 				(void *)qstack);
  	}
-#ifdef MONITOR_THREAD_CORE
-    pthread_attr_init(&attr);
-    CPU_ZERO(&cpus);
-    CPU_SET(MONITOR_THREAD_CORE, &cpus);
-    pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpus);
+	
+	int monitor_core = CONFIG.eths[0].stat_print;
+	if(monitor_core){
+    	pthread_attr_init(&attr);
+    	CPU_ZERO(&cpus);
+    	CPU_SET(monitor_core, &cpus);
+    	pthread_attr_setaffinity_np(&attr, sizeof(cpu_set_t), &cpus);
 
-    pthread_create(&get_global_ctx()->monitor_thread, &attr,
+    	pthread_create(&get_global_ctx()->monitor_thread, &attr,
 	            monitor_thread_start, (void *)qstack);
-#endif
+	}
+
 #if USE_MESSAGE
     pthread_attr_init(&attr);
     CPU_ZERO(&cpus);
@@ -943,8 +924,23 @@ qstack_init(int stack_num)
 #endif
 
 	TRACE_CHECKP("qstack system global_init finish!\n");
+	
+	qapp = (qapp_t*)calloc(app_num, sizeof(qapp_t));
 
-	q_init_manager(stack_num, CONFIG.num_servers);
+    if(qapp){
+    	for (i = 0; i < app_num; i++){
+			qapp[i] = (qapp_t)calloc(1, sizeof(struct qapp_context));
+			if(qapp[i])
+				qapp[i]->app_id = i;
+			else
+				TRACE_ERROR("qstack app context %d init failed!", i);
+		}
+	}else
+		TRACE_ERROR("qstack app context pointer init failed!");
+
+	q_init_manager(stack_num, CONFIG.app_thread);
+	
+	return qapp;
 }  
 
 int

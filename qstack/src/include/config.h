@@ -132,6 +132,9 @@ mask_from_prefix(int prefix);
 void 
 parse_mac_address(unsigned char *haddr, char *haddr_str);
 
+void
+set_host_ip(char *optstr);
+
 int 
 parse_ip_address(uint32_t *ip_addr, char *ip_str);
 /******************************************************************************/

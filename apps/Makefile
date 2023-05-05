@@ -7,7 +7,7 @@ endif
 
 TARGETS = echo_server iotepserver
 #test_pkt
-CC=gcc -g -O3 -DNDEBUG -lssl -lcrypto 
+CC=gcc -g -O0 -DNDEBUG -lssl -lcrypto 
 
 REDIS = 1
 
