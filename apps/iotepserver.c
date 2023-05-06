@@ -759,7 +759,7 @@ HandleReadEvent(struct thread_context *ctx, int sockid, struct server_vars *sv, 
 	} 
 	
 	/*@2022.2.23*/ 
-	q_free_mbuf(ctx->qapp->core_id, mbuf);      		     
+	q_free_mbuf(ctx->qapp, mbuf);      		     
 #else
                 
 	//gettimeofday(&g_stats[i].redis_t_start, NULL); 

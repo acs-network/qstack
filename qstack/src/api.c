@@ -362,7 +362,7 @@ q_accept(qapp_t app, int sockid, struct sockaddr *addr, socklen_t *addrlen)
 		*addrlen = sizeof(struct sockaddr_in);
 	}
 
-	DSTAT_ADD(get_global_ctx()->accepted_num[app->core_id], 1);
+	DSTAT_ADD(get_global_ctx()->accepted_num[app->app_id], 1);
 	return accepted->socket->id;
 }
 
@@ -456,7 +456,7 @@ q_recv(qapp_t app, int sockid, char **buf, ssize_t *len, uint8_t flags)
 	
 	TRACE_CHECKP("q_recv() was called @ Core %d @ Socket %d\n", 
 			app->core_id, sockid);
-	DSTAT_ADD(get_global_ctx()->recv_called_num[app->core_id], 1);
+	DSTAT_ADD(get_global_ctx()->recv_called_num[app->app_id], 1);
 	if (sockid < 0 || sockid >= CONFIG.max_concurrency) {
 		TRACE_EXCP("Socket id %d out of range.\n", sockid);
 		*len = -1;
@@ -494,7 +494,7 @@ q_recv(qapp_t app, int sockid, char **buf, ssize_t *len, uint8_t flags)
 		ret->mbuf_state = MBUF_STATE_RREAD;
 		*buf = mbuf_get_payload_ptr(ret);
 		*len = ret->payload_len;
-		DSTAT_ADD(get_global_ctx()->rmbuf_get_num[app->core_id], 1);
+		DSTAT_ADD(get_global_ctx()->rmbuf_get_num[app->app_id], 1);
 		TRACE_MBUF("mbuf %p received @ Stream %d, seq:%u len:%d priority:%d\n", 
 				ret, cur_stream->id, ret->tcp_seq, *len, ret->priority);
 	} else {
@@ -512,7 +512,7 @@ q_close(qapp_t app, int sockid)
 {
 	int ret;
 	TRACE_CLOSE("q_close() is called @ Socket %d\n", sockid);
-	DSTAT_ADD(get_global_ctx()->close_called_num[app->core_id], 1);
+	DSTAT_ADD(get_global_ctx()->close_called_num[app->app_id], 1);
 
 	if (sockid < 0 || sockid >= CONFIG.max_concurrency) {
 		TRACE_EXCP("Socket id %d out of range.\n", sockid);

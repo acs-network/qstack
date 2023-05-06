@@ -435,14 +435,14 @@ qepoll_create(uint32_t size)
 		errno = ENFILE;
 		return -1;
 	}*/
+	qid = ++qconf->efd;
 
-	qtx = g_qepoll[qconf->efd];
+	qtx = g_qepoll[qid];
 	qe = qtx->qe;
 	if (!qe) {
 		return -1;
 	}
 	
-
 	//socket->qe = qe;
 
 	/* create event queues and channels*/
@@ -453,7 +453,6 @@ qepoll_create(uint32_t size)
 	qe->sq_chan = qtx->sq_chan;
 	qe->qs_chan = qtx->qs_chan;
 
-	qid = qconf->efd++;
 
 	return qid;
 }
@@ -1332,7 +1331,7 @@ qconf_init(int stack, int server, int app)
 	qconf->num_server  = server;
 	qconf->num_stack  = stack;
 	qconf->num_app = app;
-	qconf->efd = 0;
+	qconf->efd = -1;
 }
 
 chan_t

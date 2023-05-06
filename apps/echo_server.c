@@ -364,7 +364,7 @@ HandleReadEvent(qapp_t qapp, int sockid, int pri, int core_id)
 		}
 
 		/* free the received mbuf */
-		q_free_mbuf(core_id, mbuf);
+		q_free_mbuf(qapp, mbuf);
 	} while (0);
 
 	/*ev.events = Q_EPOLLIN;
@@ -407,7 +407,7 @@ qstack_createListenSock(qapp_t *ctx)
 	/* listen (backlog: 4K) */
 	ret = q_listen(qapp, listener, 10000);
 	if (ret < 0) {
-		TRACE_ERR("mtcp_listen() failed!\n");
+		TRACE_ERR("q_listen() failed!\n");
 		return -1;
 	}
 
@@ -424,7 +424,6 @@ func_check_req_high(char *message)
 int
 AcceptConnection(qapp_t qapp, int listener)
 {
-	struct server_vars *sv;
 	struct qepoll_event ev;
 	unsigned long long now;
 	int c;
@@ -441,7 +440,6 @@ AcceptConnection(qapp_t qapp, int listener)
 		if(CONFIG.pri)
 			q_sockset_req_high(c, func_check_req_high);
 
-		CleanServerVariable(sv);
 		TRACE_CNCT("New connection %d accepted.\n", c);
 		/*ev = CreateQevent(0, ctx->core, c);
 		ev->events = Q_EPOLLIN;
@@ -471,7 +469,7 @@ RunServerThread(void *arg)
 	struct qepoll_event *ev;
 	unsigned long long now, prev;
 
-	//qapp = get_core_context(core)->rt_ctx->qapp;
+	qapp = get_core_context(core)->rt_ctx->qapp;
 	int id = qapp->app_id;
               
 	if (!qapp) {
@@ -649,7 +647,7 @@ main(int argc, char **argv)
 
     stack_num = conf->stack_thread;
 	app_num = conf->app_thread;
-	efd = calloc(app_num, sizeof(int));
+	efd = (int*)calloc(app_num, sizeof(int));
 	for(i = 0; i < app_num; i++) {
     	efd[i] = qepoll_create(1);
 	}

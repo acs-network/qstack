@@ -16,7 +16,7 @@ QSTACK_HDR = api.h
 ### GCC ###
 GCC=gcc
 
-GCC_OPT = -w -g -O0 -m64 -DNDEBUG -lssl -lcrypto 
+GCC_OPT = -w -g -O3 -m64 -DNDEBUG -lssl -lcrypto 
 #CFLAGS += -D INLINE_DISABLED
 #GCC_OPT += $(DBG_OPT)
 

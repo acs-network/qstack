@@ -463,13 +463,13 @@ q_get_wmbuf(qapp_t app, uint8_t **buff, int *max_len);
 /**
  * free the used mbuf 
  *
- * @param core_id	core_id of the core where the function is called
+ * @param app	    application context where the function is called
  * @param mbuf		target mbuf to be freed
  *
  * @return null
  */
 void
-q_free_mbuf(int core_id, mbuf_t mbuf);
+q_free_mbuf(qapp_t app, mbuf_t mbuf);
 
 /**
  * set the function to detect if a packet is the head of a message

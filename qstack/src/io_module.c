@@ -524,9 +524,10 @@ io_send_mbuf(qstack_t qstack, int pri, mbuf_t mbuf, int len)
 
 // *   6. io_get_uwmbuf(): get mbuf to be writen by user\n
 mbuf_t
-io_get_uwmbuf(int core_id, int ifidx)
+io_get_uwmbuf(qapp_t app, int ifidx)
 {
-	DSTAT_ADD(get_global_ctx()->uwmbuf_alloced[core_id], 1);
+	int core_id = app->core_id;
+	DSTAT_ADD(get_global_ctx()->uwmbuf_alloced[app->app_id], 1);
 #if !LOOP_BACK_TEST_MODE
 //  can not free
 //    qstack_t qstack = NULL;

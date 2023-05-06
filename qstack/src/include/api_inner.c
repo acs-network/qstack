@@ -24,7 +24,7 @@ mbuf_t
 q_get_wmbuf(qapp_t app, uint8_t **buff, int *max_len)
 {
 	// TODO: app_id is better
-	mbuf_t mbuf = io_get_wmbuf(app->core_id, buff, max_len, 1);
+	mbuf_t mbuf = io_get_wmbuf(app, buff, max_len, 1);
 	return mbuf;
 }
 
@@ -32,7 +32,7 @@ q_get_wmbuf(qapp_t app, uint8_t **buff, int *max_len)
 static inline 
 #endif
 void
-q_free_mbuf(int core_id, mbuf_t mbuf)
+q_free_mbuf(qapp_t app, mbuf_t mbuf)
 {
 	if (mbuf) {
 #ifdef PRIORITY_RECV_BUFF
@@ -44,11 +44,11 @@ q_free_mbuf(int core_id, mbuf_t mbuf)
 			return;
 		}
 #endif
-		mbuf_set_op(mbuf, MBUF_OP_RCV_UFREE, core_id);
-		DSTAT_ADD(get_global_ctx()->request_freed[core_id], 1);
-		mbuf_free(core_id, mbuf);
+		mbuf_set_op(mbuf, MBUF_OP_RCV_UFREE, app->core_id);
+		DSTAT_ADD(get_global_ctx()->request_freed[app->app_id], 1);
+		mbuf_free(app->core_id, mbuf);
 	} else {
-		TRACE_EXCP("try to free empty mbuf at Core %d!\n", core_id);
+		TRACE_EXCP("try to free empty mbuf at Core %d!\n", app->core_id);
 	}
 }
 
@@ -101,7 +101,7 @@ q_send(qapp_t app, int sockid, mbuf_t mbuf, uint32_t len, uint8_t flags)
 {
 	TRACE_CHECKP("q_send() was called @ Core %d @ Socket %d\n", 
 			app->core_id, sockid);
-	DSTAT_ADD(get_global_ctx()->write_called_num[app->core_id], 1);
+	DSTAT_ADD(get_global_ctx()->write_called_num[app->app_id], 1);
 	tcp_stream_t cur_stream; 
 	int ret = -2;
 	if (sockid < 0 || sockid >= CONFIG.max_concurrency) {

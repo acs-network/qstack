@@ -444,6 +444,7 @@ __print_network_state()
 {
 #if STATISTIC_STATE
 	int i,j;
+	int stack_num, app_num;
 	// for per stack thread
 	qstack_t qstack;
 	uint32_t mbuf_dfreed = 0;
@@ -483,7 +484,10 @@ __print_network_state()
 	static uint64_t byte_in_pre = 0;
 	static uint64_t byte_out_pre = 0;
 
-	for (i=0; i<CONFIG.stack_thread; i++) {
+	stack_num = CONFIG.stack_thread;
+    app_num = CONFIG.app_thread;
+
+	for (i=0; i< stack_num; i++) {
 		qstack = get_stack_context(i);
 		if (!qstack) {
 			return;
@@ -510,7 +514,7 @@ __print_network_state()
 	}
 
 	#if STATISTIC_STATE_DETAIL
-	for (i=0; i<CONFIG.num_cores; i++) {
+	for (i = 0; i < stack_num + app_num; i++) {
 		uwmbuf_alloced += get_global_ctx()->uwmbuf_alloced[i];
 		request_freed += get_global_ctx()->request_freed[i];
 		accepted_num += get_global_ctx()->accepted_num[i];
@@ -884,7 +888,7 @@ qstack_init()
 
     pthread_attr_t attr;
     cpu_set_t cpus;
-	for (i=0; i<stack_num; i++) {
+	for (i=0; i < stack_num; i++) {
 		qstack = stack_context_init(i);
 
 		pthread_attr_init(&attr);
@@ -930,15 +934,17 @@ qstack_init()
     if(qapp){
     	for (i = 0; i < app_num; i++){
 			qapp[i] = (qapp_t)calloc(1, sizeof(struct qapp_context));
-			if(qapp[i])
+			if(qapp[i]){
 				qapp[i]->app_id = i;
+				qapp[i]->core_id = i + stack_num;
+			}
 			else
 				TRACE_ERROR("qstack app context %d init failed!", i);
 		}
 	}else
 		TRACE_ERROR("qstack app context pointer init failed!");
 
-	q_init_manager(stack_num, CONFIG.app_thread);
+	q_init_manager(stack_num, app_num);
 	
 	return qapp;
 }  
