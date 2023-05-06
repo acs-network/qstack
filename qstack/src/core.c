@@ -950,7 +950,7 @@ qstack_init()
 }  
 
 int
-qstack_create_app(int core_id, qapp_t *app_handle, app_func_t app_func, 
+qstack_thread_create(pthread_t *tidp, int core_id, qapp_t *app_handle, app_func_t app_func, 
 		void *args)
 {
 	qapp_t ret =  __qstack_create_app(core_id, app_func, args);
@@ -962,12 +962,13 @@ qstack_create_app(int core_id, qapp_t *app_handle, app_func_t app_func,
 			// when app_handle is NULL, the user don't need a qapp as return
 			*app_handle = ret;
 		}
+		*tidp = get_core_context(core_id)->rt_ctx->rt_thread;
 		return SUCCESS;
 	}
 }
 
 void
-qstack_join()
+qstack_thread_join()
 {
 	int i;
 	pthread_t thread;

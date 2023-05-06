@@ -146,6 +146,7 @@ struct thread_context
 };
 /*----------------------------------------------------------------------------*/
 struct app_args{
+	int efd;
 	int listener;
     qapp_t qapp;
 };
@@ -422,7 +423,7 @@ func_check_req_high(char *message)
 }
 
 int
-AcceptConnection(qapp_t qapp, int listener)
+qstack_acceptConn(qapp_t qapp, int efd, int listener)
 {
 	struct qepoll_event ev;
 	unsigned long long now;
@@ -445,7 +446,7 @@ AcceptConnection(qapp_t qapp, int listener)
 		ev->events = Q_EPOLLIN;
 		now = GetTickMS();*/
 		ev.events = Q_EPOLLIN;
-		qepoll_ctl(qapp->app_id, c, Q_EPOLL_CTL_ADD, -1, &ev);
+		qepoll_ctl(efd, c, Q_EPOLL_CTL_ADD, &ev, -1);
 		TRACE_CNCT("Socket %d registered.\n", c);
 
 	} else {
@@ -460,34 +461,43 @@ void *
 RunServerThread(void *arg)
 {
 	struct app_args info = *(struct app_args *)arg;
-	qapp_t qapp = info.qapp;
-	int core = qapp->core_id;
-	int listener;
+	qapp_t qapp;
+	int core, app_id;
+	int efd, listener;
 	struct qepoll_event *events;
 	int nevents;
-	int i, ret;
+	int i, n, ret;
 	struct qepoll_event *ev;
 	unsigned long long now, prev;
 
+	qapp = info.qapp;
+	core = qapp->core_id;
 	qapp = get_core_context(core)->rt_ctx->qapp;
-	int id = qapp->app_id;
+	app_id = qapp->app_id;
               
 	if (!qapp) {
 		TRACE_ERR("Failed to initialize app thread.\n");
 		return NULL;
 	}
+	efd = info.efd;
 	listener = info.listener;
-	struct event_mgt evmgt;
-	eventmgt_init(&evmgt, MAX_HIGH_EVENTS, MAX_LOW_EVENTS);
+	/*struct event_mgt evmgt;
+	eventmgt_init(&evmgt, MAX_HIGH_EVENTS, MAX_LOW_EVENTS);*/
+
+    events = (struct qepoll_event*)calloc(MAX_LOW_EVENTS, sizeof(struct qepoll_event));
+
 	TRACE_LOG("====================\napp %d start at core %d, pid:%d\n", 
 			qapp->app_id, core, syscall(SYS_gettid));
 	
 	while (!done[core]) {
 		/* get one event if avaiable, otherwise yield to other threads */
-		while ((ev = eventmgt_get(id, &evmgt)) == NULL);
+		//while ((ev = eventmgt_get(app_id, &evmgt)) == NULL);
+        n = qepoll_wait(efd, events, MAX_LOW_EVENTS, -1);
+		for (i = 0; i < n; i++){ 
+		ev = &events[i];
 		if (ev->sockid == listener) {
 			/* if the event is for the listener, accept connection */
-			ret = AcceptConnection(qapp, listener);
+			ret = qstack_acceptConn(qapp, efd, listener);
 			if (ret < 0)
 				TRACE_EXCP("Accept fails at socket %d\n",listener);
 		} else if (ev->events & Q_EPOLLERR) {
@@ -516,6 +526,7 @@ RunServerThread(void *arg)
 			;;
 		} else {
 			assert(0);
+		}
 		}
 	}
 	
@@ -611,8 +622,6 @@ main(int argc, char **argv)
 	int stack_num, app_num, core;
 	int o, i, listener;
 	int *efd;
-    pthread_attr_t attr;
-    cpu_set_t cpus;
 	struct qstack_config *conf;
 	static char *cfg_file = NULL;
 	qapp_t* qapp;
@@ -637,7 +646,7 @@ main(int argc, char **argv)
 			return EXIT_SUCCESS;
 		}
 	}
-	// default settings
+	//config file settings
 	conf = qstack_getconf(cfg_file);
 	
 	qapp = qstack_init();
@@ -660,10 +669,9 @@ main(int argc, char **argv)
 
 	TRACE_INFO("Qstack initialization finished.\n");
     
-	pthread_attr_init(&attr);
-
     for (i = 0; i < app_num; i++) {
 		info[i].qapp = qapp[i];
+		info[i].efd  = efd[i];
 		info[i].listener = listener;
 		done[i] = FALSE;
 #ifdef SHARED_NOTHING_MODE
@@ -671,12 +679,11 @@ main(int argc, char **argv)
 #else
 		core = i + stack_num;
 #endif
-		qstack_create_app(core, &qapp[i], RunServerThread, 
+		qstack_thread_create(&app_thread[i], core, &qapp[i], RunServerThread, 
 				(void *)&info[i]);
-		app_thread[i] = get_core_context(core)->rt_ctx->rt_thread;
 	}
 	
-	qstack_join();
+	qstack_thread_join();
 	return 0;
 }
 

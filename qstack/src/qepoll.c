@@ -250,7 +250,7 @@ q_take_timeout( qTimer_t apTimeout,unsigned long long allNow,struct qepoll_event
 	apTimeout->llStartIdx[pri] += cnt - 1;
 }
 
-int qepoll_ctl(int app_id, int fd, int op, unsigned long long allNow, struct qepoll_event *event)
+int qepoll_ctl(int efd, int fd, int op, struct qepoll_event *event, unsigned long long allNow)
 {
 	uint8_t i;
 	qmag_t qmag;
@@ -259,7 +259,7 @@ int qepoll_ctl(int app_id, int fd, int op, unsigned long long allNow, struct qep
 	uint32_t events;
 	struct qepoll_event *pend_ev;
 
-	qmag = g_qepoll[app_id];
+	qmag = g_qepoll[efd];
 	
 	/*if (fd < 0 || fd >= MAX_CONCURR * (app_id  + 1)) {
 		TRACE_EXCP("@App %d Epoll id %d out of range.\n", app_id, fd);
@@ -267,9 +267,8 @@ int qepoll_ctl(int app_id, int fd, int op, unsigned long long allNow, struct qep
 		return -1;
 	}*/
 
-	
 	if (!qmag) {
-		TRACE_EXCP("Epoll manager doesn't exist at core id %d!", app_id);
+		TRACE_EXCP("Epoll manager doesn't exist at qepoll id %d!", efd);
 		return -1;
 	}
 
@@ -294,7 +293,7 @@ int qepoll_ctl(int app_id, int fd, int op, unsigned long long allNow, struct qep
 		}*/
 
 		event->sockid = fd;
-		event->apid   = app_id;
+		event->apid   = efd;
 		
 		/* EPOLLERR and EPOLLHUP are registered as default */
 		events = event->events;
@@ -328,7 +327,7 @@ int qepoll_ctl(int app_id, int fd, int op, unsigned long long allNow, struct qep
 			pend_ev = get_pending_event(fd);
 			if(pend_ev){
 				pend_ev->dire = APP_TO_QE;
-				pend_ev->apid = app_id; 
+				pend_ev->apid = efd; 
 				AddTimeEvent(Q_EPOLLIN, allNow, pend_ev);
 			}
 			socket->socktype = 2;
@@ -372,7 +371,7 @@ int qepoll_ctl(int app_id, int fd, int op, unsigned long long allNow, struct qep
 		socket->qepoll = Q_EPOLLNONE;
 		
 		TRACE_CLOSE("Del QEPOLL event from %d, socket %d done! \n",
-					app_id, fd);
+					efd, fd);
 	}
 
 	return 0;
@@ -458,7 +457,7 @@ qepoll_create(uint32_t size)
 }
 
 int 
-qepoll_qevent(qmag_t qmag, eque_t event_que, int core, struct qepoll_event *events, int *ev_cnt)
+qepoll_qevent(qmag_t qmag, eque_t event_que, int efd, struct qepoll_event *events, int *ev_cnt)
 {
 	int sockid, app_id;
 	int validity = TRUE;
@@ -484,7 +483,7 @@ qepoll_qevent(qmag_t qmag, eque_t event_que, int core, struct qepoll_event *even
 						"dire: %d "
    	 	 				"fd: %d "
    	 	 				"event: %d\n",
-						core,
+						efd,
    						socket->qepoll,
 						event_que->start, event_que->end,
 						&event_que->qevent[event_que->start],
@@ -518,12 +517,12 @@ qepoll_qevent(qmag_t qmag, eque_t event_que, int core, struct qepoll_event *even
    			DSTAT_ADD(qstack->wait_stev_num, 1);*/
    		reg[sockid].proc = 0;
 
-   		TRACE_EVENT("@Core %d Wait qevent from qepoll_map:%p, "
+   		TRACE_EVENT("@Qepoll %d Wait qevent from qepoll_map:%p, "
    					"events[%d]:%p, "
    					"events type:%d, "
    					"events fd:%d, "
    					"events.data.ptr:%p\n",
-                    core,socket,
+                    efd,socket,
 					*ev_cnt-1, &event_que->qevent[event_que->start],
    					events[*ev_cnt-1].events,
    					sockid,
@@ -547,32 +546,33 @@ qepoll_qevent(qmag_t qmag, eque_t event_que, int core, struct qepoll_event *even
  * @note
  */
 int 
-qepoll_wait(qapp_t app, struct qepoll_event *events, int maxevents, int timeout)
+qepoll_wait(int efd, struct qepoll_event *events, int maxevents, int timeout)
 {  
 	qmag_t qmag;
 	socket_map_t socket;
 	qepoll_t qepoll;
 	eque_t  event_que, eq_h;
 	qTimer_t apTimeout;
-	int num_stack;
+	int num_stack, num_app;
 	int sockid,validity,dire = 0;
 	int i,j,pri,idx,ns,num_events = 0;
 	uint32_t ev_cnt = 0;
 	
 	_mm_sfence();
 
-	num_stack = get_qconf()->num_stack;
+	num_stack = CONFIG.stack_thread;
+	num_app   = CONFIG.app_thread;
 
-	qmag = g_qepoll[app->app_id];
+	qmag = g_qepoll[efd];
  	if (!qmag) 
 	{
 		TRACE_EXCP("Qepoll manager is NULL.\n");
 		return -1;
 	}
 		
-	if (app->app_id < 0 || app->app_id >= MAX_SERVER_NUM) 
+	if (efd < 0 || efd >= MAX_SERVER_NUM) 
 	{
-		TRACE_EXCP("Qepoll id %d out of range.\n", app->app_id);
+		TRACE_EXCP("Qepoll id %d out of range.\n", efd);
 		return -EBADF;
  	}
 
@@ -638,9 +638,9 @@ qepoll_wait(qapp_t app, struct qepoll_event *events, int maxevents, int timeout)
 					 *	       apTimeout,pri,idx,num_events);*/
 					while(!(event_que->end == event_que->start) && ev_cnt < maxevents)
 					{
-						validity = qepoll_qevent(qmag, event_que, app->app_id, events, &ev_cnt);
+						validity = qepoll_qevent(qmag, event_que, efd, events, &ev_cnt);
 						if(validity)
-							DSTAT_ADD(get_global_ctx()->high_event_queue[app->app_id], 1);
+							DSTAT_ADD(get_global_ctx()->high_event_queue[efd], 1);
 						_mm_sfence();
 					}
 				} 
@@ -659,10 +659,10 @@ qepoll_wait(qapp_t app, struct qepoll_event *events, int maxevents, int timeout)
 					 *	       apTimeout,pri,idx,num_events);*/
 					while(!(event_que->end == event_que->start) && ev_cnt < maxevents)
 					{
-						validity = qepoll_qevent(qmag, event_que, app->app_id, events, &ev_cnt);
+						validity = qepoll_qevent(qmag, event_que, efd, events, &ev_cnt);
 						_mm_sfence();
 						if(validity)
-							DSTAT_ADD(get_global_ctx()->low_event_queue[app->app_id], 1);
+							DSTAT_ADD(get_global_ctx()->low_event_queue[efd], 1);
 
 						for( j = 0;j < cnt;j++)
 						{
@@ -670,10 +670,10 @@ qepoll_wait(qapp_t app, struct qepoll_event *events, int maxevents, int timeout)
 							eq_h = apTimeout->qEvque[1] + idx;
 							while(!(eq_h->end == eq_h->start) && ev_cnt < maxevents)
 							{
-								validity = qepoll_qevent(qmag, eq_h, app->app_id, events, &ev_cnt);
+								validity = qepoll_qevent(qmag, eq_h, efd, events, &ev_cnt);
 								_mm_sfence();
 								if(validity)
-									DSTAT_ADD(get_global_ctx()->high_event_queue[app->app_id], 1);
+									DSTAT_ADD(get_global_ctx()->high_event_queue[efd], 1);
 							}
 						}
 						apTimeout->llStartIdx[1] += cnt - 1;
@@ -681,22 +681,21 @@ qepoll_wait(qapp_t app, struct qepoll_event *events, int maxevents, int timeout)
 				}
 				apTimeout->ullStart = GetTickMS();
 				apTimeout->llStartIdx[0] += cnt - 1;
-			}else //start of non-timeout process
-			{
+			}else{/*start of non-timeout process*/
 				event_que = apTimeout->qEvque[1];
 				while((event_que->end != event_que->start) && ev_cnt < maxevents)
 				{
 					TRACE_EVENT("From Stack %d,apTimeout:%p,\npri:%d,\nnum_events:%d.\n",
 							ns, apTimeout,pri,num_events);
-					validity = qepoll_qevent(qmag, event_que, app->app_id, events, &ev_cnt);
+					validity = qepoll_qevent(qmag, event_que, efd, events, &ev_cnt);
 					if(validity)
-						DSTAT_ADD(get_global_ctx()->high_event_queue[app->app_id], 1);
+						DSTAT_ADD(get_global_ctx()->high_event_queue[efd], 1);
 						_mm_sfence();
 				}
 				event_que = apTimeout->qEvque[0];
 				while((event_que->end != event_que->start) && ev_cnt < maxevents)
 				{
-					if(app->app_id == 0)
+					if(efd == 0)
 						TRACE_EVENT("From Stack %d,"
 									 "apTimeout:%p,"
 									 "\npri:%d,"
@@ -705,25 +704,25 @@ qepoll_wait(qapp_t app, struct qepoll_event *events, int maxevents, int timeout)
 									apTimeout,
 									pri,
 									num_events);
-					validity = qepoll_qevent(qmag, event_que, app->app_id, events, &ev_cnt);
+					validity = qepoll_qevent(qmag, event_que, efd, events, &ev_cnt);
 					_mm_sfence();
 					if(validity)
-						DSTAT_ADD(get_global_ctx()->low_event_queue[app->app_id], 1);
+						DSTAT_ADD(get_global_ctx()->low_event_queue[efd], 1);
 
 					eq_h = apTimeout->qEvque[1];
 					while((eq_h->end != eq_h->start) && ev_cnt < maxevents)
 					{
-						validity = qepoll_qevent(qmag, eq_h, app->app_id, events, &ev_cnt);
+						validity = qepoll_qevent(qmag, eq_h, efd, events, &ev_cnt);
 						_mm_sfence();
 						if(validity)
-							DSTAT_ADD(get_global_ctx()->high_event_queue[app->app_id], 1);
+							DSTAT_ADD(get_global_ctx()->high_event_queue[efd], 1);
 					}
 				}
 			}//end of timeout judge
  		}//end of dire circle
  	}
 	if (!ev_cnt) {
-		int core_id = get_app_context(app->app_id)->core_id; 
+		int core_id = get_app_context(efd)->core_id; 
 		rtctx_t rt_ctx = get_core_context(core_id)->rt_ctx;
 		if (rt_ctx->qstack) {
 			struct thread_wakeup *wakeup_ctx = &rt_ctx->wakeup_ctx;

@@ -367,6 +367,7 @@ qstack_init();
 /**
  * create an application thread, and pin it to the target core
  *
+ * @param tidp		    the pointer of created application thread 
  * @param core_id		the core on which the application is goning to run
  * @app_handle[out]		the handle of created application thread
  * @param app_func		the entry function of application
@@ -378,7 +379,7 @@ qstack_init();
  *  input app_handle with NULL if don't need a qapp return
  */
 int
-qstack_create_app(int core_id, qapp_t *app_handle, app_func_t app_func, 
+qstack_create_app(pthread_t *tidp, int core_id, qapp_t *app_handle, app_func_t app_func, 
 		void *args);
 
 /**
@@ -387,7 +388,7 @@ qstack_create_app(int core_id, qapp_t *app_handle, app_func_t app_func,
  * return NULL;
  */
 void
-qstack_join();
+qstack_thread_join();
 
 /**
  * alloc and init application thread contexts

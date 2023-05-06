@@ -568,13 +568,17 @@ dpdk_load_module(void)
 static inline int 
 dpdk_soft_filter(struct rte_mbuf * pkt_mbuf)
 {
-#if DRIVER_PRIORITY
+/*#if DRIVER_PRIORITY
 	char *payload = mbuf_get_tcp_ptr(pkt_mbuf) + 32;
 	pkt_mbuf->priority = (pkt_mbuf->pkt_len>80 && payload[5] == 0x01);
 	return pkt_mbuf->priority;
 #else
     return 0;
-#endif
+#endif*/
+	int ret;
+	ret = driver_pri_filter(pkt_mbuf);
+	pkt_mbuf->priority = ret;
+	return ret;
 }
 /*----------------------------------------------------------------------------*/
 void 

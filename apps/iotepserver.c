@@ -211,7 +211,7 @@ CleanServerVariable(struct server_vars *sv)
 void 
 CloseConnection(struct thread_context *ctx, int sockid, struct server_vars *sv)
 {
-	qepoll_ctl(ctx->qapp->app_id, sockid, Q_EPOLL_CTL_DEL, GetTickMS(), NULL);
+	qepoll_ctl(ctx->qapp->app_id, sockid, Q_EPOLL_CTL_DEL, NULL, GetTickMS());
 	//mtcp_close(ctx->mctx, sockid);
 }
 /*----------------------------------------------------------------------------*/
@@ -876,7 +876,7 @@ AcceptConnection(struct thread_context *ctx, int listener)
 		//ev = CreateQevent(0, ctx->core, c);
 		ev.events = Q_EPOLLIN;
 		//now = GetTickMS();
-		qepoll_ctl(ctx->qapp->app_id, c, Q_EPOLL_CTL_ADD, -1, &ev);
+		qepoll_ctl(ctx->qapp->app_id, c, Q_EPOLL_CTL_ADD, &ev, -1);
 		TRACE_DEBUG("Socket %d registered.\n", c);
 
 	} else {
@@ -1039,7 +1039,7 @@ int
 main(int argc, char **argv)
 {
 	struct thread_context *ctx[MAX_CPUS];
-	qapp_t dispatcher;
+	qapp_t worker;
 	int o, i, qid[10];
 	char *host_ip[16] = {0};
 	strcpy(host_ip, "192.168.86.100");
@@ -1121,24 +1121,26 @@ main(int argc, char **argv)
 
 	TRACE_INFO("Qstack initialization finished.\n");
 
-    	for (i = 0; i < core_server; i++) {
+    for (i = 0; i < core_server; i++) {
 		server_thread[i].core = i + core_stack;
 		server_thread[i].ctx = ctx[i];
 		server_thread[i].id = i;
 		server_thread[i].listener = listener;
 		done[i] = FALSE;
-		qstack_create_app(server_thread[i].core, &app_thread[i],
+		qstack_thread_create(&app_thread[i], server_thread[i].core, &(ctx[i]->qapp),
 				RunServerThread, (void *)&server_thread[i]); 
 	}
         
 	for (i = 0; i < nb_processors; i ++) {
-        	buffer[i].id = i;
-			buffer[i].sid = i / WORKER_PER_SERVER;
-			buffer[i].core = core_stack + core_server + i;
-        	qstack_create_app(buffer[i].core, &process_requests[i], redis_requests, (void *) &buffer[i]);
-    	}
+        buffer[i].id = i;
+		buffer[i].sid = i / WORKER_PER_SERVER;
+		buffer[i].core = core_stack + core_server + i;
+		worker = qapp_thread + i;
+        qstack_thread_create(&process_requests[i], buffer[i].core, &worker, 
+			    redis_requests, (void *) &buffer[i]);
+    }
 	
-	qstack_join();
+	qstack_thread_join();
 
 	return 0;
 }

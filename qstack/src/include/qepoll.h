@@ -291,7 +291,7 @@ qepoll_create(uint32_t size);
 
 /** 
  * wait for events in polling/coroutine mode
- * @param[in]	 app  		max size of queue
+ * @param[in]	 efd  		qepoll id
  * @param[in]	 events  	qepoll events data structures
  * @param[in]	 maxevents  the maximum number of the events can be fetched
  * @param[in]	 timeout  	the timeout of qepoll wait for events
@@ -301,12 +301,12 @@ qepoll_create(uint32_t size);
  * @note
  */
 int 
-qepoll_wait(qapp_t app, struct qepoll_event *events, int maxevents, int timeout);
+qepoll_wait(int efd, struct qepoll_event *events, int maxevents, int timeout);
 
 /**
  * wait epoll events with explicit priority
  *
- * @param[in]	 efd  		max size of queue
+ * @param[in]	 efd  		qepoll id
  * @param[out]	 events_h	the waited high-priority events
  * @param[out]	 events_l	the waited low-priority events
  * @param[in]	 maxevents  the maximum number of the events can be fetched
@@ -323,18 +323,18 @@ qepoll_wait_pri(int efd, struct qepoll_event *events_h,
 
 /** 
  * add, delete and modify events types
- * @param[in]    app_id     app id
  * @param[in]	 efd		qepoll file descriptor id
- * @param[in]	 op 		the operation for modify events states
  * @param[in]	 sockid		socket id of the event
+ * @param[in]	 op 		the operation for modify events states
  * @param[in]	 events		qepoll events data structures
+ * @param[in]	 allNow		the current timestamp in ms
  * @return		 events number to be processed; -1 means timeout
  * @ref 		 qepoll.h
  * @see
  * @note
  */
 int
-qepoll_ctl(int app_id, int fd, int op, unsigned long long allNow, struct qepoll_event *event);
+qepoll_ctl(int efd, int fd, int op, struct qepoll_event *event, unsigned long long allNow);
 
 
 /** 
