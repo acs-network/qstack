@@ -446,7 +446,8 @@ qstack_acceptConn(qapp_t qapp, int efd, int listener)
 		ev->events = Q_EPOLLIN;
 		now = GetTickMS();*/
 		ev.events = Q_EPOLLIN;
-		qepoll_ctl(efd, c, Q_EPOLL_CTL_ADD, &ev, -1);
+		ev.data.fd = c;
+		qepoll_ctl(efd, Q_EPOLL_CTL_ADD, c, &ev, -1);
 		TRACE_CNCT("Socket %d registered.\n", c);
 
 	} else {
@@ -463,11 +464,10 @@ RunServerThread(void *arg)
 	struct app_args info = *(struct app_args *)arg;
 	qapp_t qapp;
 	int core, app_id;
-	int efd, listener;
-	struct qepoll_event *events;
+	int efd, listener, sockid;
+	struct qepoll_event *ev;
 	int nevents;
 	int i, n, ret;
-	struct qepoll_event *ev;
 	unsigned long long now, prev;
 
 	qapp = info.qapp;
@@ -484,7 +484,7 @@ RunServerThread(void *arg)
 	/*struct event_mgt evmgt;
 	eventmgt_init(&evmgt, MAX_HIGH_EVENTS, MAX_LOW_EVENTS);*/
 
-    events = (struct qepoll_event*)calloc(MAX_LOW_EVENTS, sizeof(struct qepoll_event));
+    ev = (struct qepoll_event*)calloc(MAX_LOW_EVENTS, sizeof(struct qepoll_event));
 
 	TRACE_LOG("====================\napp %d start at core %d, pid:%d\n", 
 			qapp->app_id, core, syscall(SYS_gettid));
@@ -492,30 +492,30 @@ RunServerThread(void *arg)
 	while (!done[core]) {
 		/* get one event if avaiable, otherwise yield to other threads */
 		//while ((ev = eventmgt_get(app_id, &evmgt)) == NULL);
-        n = qepoll_wait(efd, events, MAX_LOW_EVENTS, -1);
+        n = qepoll_wait(efd, ev, MAX_LOW_EVENTS, -1);
 		for (i = 0; i < n; i++){ 
-		ev = &events[i];
-		if (ev->sockid == listener) {
+		sockid = ev[i].data.fd;
+		if (sockid == listener) {
 			/* if the event is for the listener, accept connection */
 			ret = qstack_acceptConn(qapp, efd, listener);
 			if (ret < 0)
 				TRACE_EXCP("Accept fails at socket %d\n",listener);
-		} else if (ev->events & Q_EPOLLERR) {
+		} else if (ev[i].events & Q_EPOLLERR) {
 			/* error on the connection */
-			TRACE_EXCP("[CPU %d] Error on socket %d\n", core, ev->sockid);
-		}else if (ev->events & Q_EPOLLIN) {        
+			TRACE_EXCP("[CPU %d] Error on socket %d\n", core, sockid);
+		}else if (ev[i].events & Q_EPOLLIN) {        
 			/* an read event from established connection */
-			ret = HandleReadEvent(qapp, ev->sockid, ev->pri, core);                      
+			ret = HandleReadEvent(qapp, sockid, ev[i].pri, core);                      
 			if (ret == 0) {
             	/* connection closed by remote host */
-                CloseConnection(qapp, ev->sockid);
+                CloseConnection(qapp, sockid);
 			} else if (ret < 0) {
                 /* if not EAGAIN, it's an error */                                    
                 if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
-					CloseConnection(qapp, ev->data.sockid);
+					CloseConnection(qapp, sockid);
                 }
 			}
-		} else if (ev->events & Q_EPOLLOUT) {
+		} else if (ev[i].events & Q_EPOLLOUT) {
 			/*struct server_vars *sv = svars[ev->data.sockid];
 			if (sv->rspheader_sent) {
 				SendUntilAvailable(qapp, ev->sockid, sv);

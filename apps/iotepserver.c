@@ -947,12 +947,12 @@ RunServerThread(void *arg)
                         } else if (ret < 0) {
                 /* if not EAGAIN, it's an error */
                 if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
-                                        CloseConnection(ctx, ev->data.sockid,
-                                                        &ctx->svars[ev->data.sockid]);
+                                        CloseConnection(ctx, ev->data.fd,
+                                                        &ctx->svars[ev->data.fd]);
                 }
                         }
                 } else if (ev->events & Q_EPOLLOUT) {
-                        struct server_vars *sv = &ctx->svars[ev->data.sockid];
+                        struct server_vars *sv = &ctx->svars[ev->data.fd];
                         if (sv->rspheader_sent) {
                                 SendUntilAvailable(ctx, ev->sockid, sv);
                         } else {

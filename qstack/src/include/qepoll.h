@@ -116,7 +116,7 @@ enum qevent_nature
 union qepoll_data
 {
 	void *ptr;
-	int sockid;
+	int fd;
 	uint32_t u32;
 	uint64_t u64;
  };
@@ -128,13 +128,13 @@ typedef union qepoll_data qepoll_data_t;
 struct qepoll_event
 {
 	uint8_t pri;
-	uint8_t core;
 	uint8_t dire;
 	uint8_t nature;
+	uint8_t core;
+	uint8_t apid;
 	uint32_t events;
-	int apid;
+	uint32_t sockid;
 	int timeout;
-	int sockid;
 	qepoll_data_t data;
 #ifdef QVDEB
 	int      flow_st;
@@ -324,8 +324,8 @@ qepoll_wait_pri(int efd, struct qepoll_event *events_h,
 /** 
  * add, delete and modify events types
  * @param[in]	 efd		qepoll file descriptor id
- * @param[in]	 sockid		socket id of the event
  * @param[in]	 op 		the operation for modify events states
+ * @param[in]	 sockid		socket id of the event
  * @param[in]	 events		qepoll events data structures
  * @param[in]	 allNow		the current timestamp in ms
  * @return		 events number to be processed; -1 means timeout
@@ -334,7 +334,7 @@ qepoll_wait_pri(int efd, struct qepoll_event *events_h,
  * @note
  */
 int
-qepoll_ctl(int efd, int fd, int op, struct qepoll_event *event, unsigned long long allNow);
+qepoll_ctl(int efd, int op, int fd, struct qepoll_event *event, unsigned long long allNow);
 
 
 /** 

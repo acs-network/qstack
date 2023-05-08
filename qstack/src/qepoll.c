@@ -250,7 +250,7 @@ q_take_timeout( qTimer_t apTimeout,unsigned long long allNow,struct qepoll_event
 	apTimeout->llStartIdx[pri] += cnt - 1;
 }
 
-int qepoll_ctl(int efd, int fd, int op, struct qepoll_event *event, unsigned long long allNow)
+int qepoll_ctl(int efd, int op, int fd, struct qepoll_event *event, unsigned long long allNow)
 {
 	uint8_t i;
 	qmag_t qmag;
@@ -459,7 +459,7 @@ qepoll_create(uint32_t size)
 int 
 qepoll_qevent(qmag_t qmag, eque_t event_que, int efd, struct qepoll_event *events, int *ev_cnt)
 {
-	int sockid, app_id;
+	int sockid;
 	int validity = TRUE;
 	socket_map_t socket;
  
@@ -467,7 +467,6 @@ qepoll_qevent(qmag_t qmag, eque_t event_que, int efd, struct qepoll_event *event
    				"end:%d,start:%d.\n",
    				pri,event_que,event_que->end,event_que->start);*/
    	sockid = event_que->qevent[event_que->start].sockid;
-	app_id = event_que->qevent[event_que->start].apid;
    	socket = qconf->g_smap + sockid;
 			//qepoll_map->qevents[qepoll_map->qepoll] |= event;
    	if (!(socket->qepoll & 
@@ -1168,7 +1167,7 @@ AddTimeEvent(uint32_t event,uint64_t allNow, struct qepoll_event *qevent)
 		}
 		idx = ( apTimeout->llStartIdx[pri] + diff ) % apTimeout->qItemSize[pri];
 		event_queue = apTimeout->qEvque[pri] + idx;
-	}else{
+	}else{/*non-timeout process*/
 		event_queue = apTimeout->qEvque[pri];
 	}
 	
