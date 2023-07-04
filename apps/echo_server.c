@@ -244,10 +244,10 @@ CleanServerVariable(struct server_vars *sv)
 }
 /*----------------------------------------------------------------------------*/
 void 
-CloseConnection(qapp_t qapp, int sockid)
+qstack_closeConn(qapp_t qapp, int sockid)
 {
 //	qepoll_ctl(ctx->qapp->app_id, sockid, Q_EPOLL_CTL_DEL, GetTickMS(), NULL);
-	qepoll_ctl(0, sockid, Q_EPOLL_CTL_DEL, GetTickMS(), NULL);
+	qepoll_ctl(0, Q_EPOLL_CTL_DEL, sockid, NULL, -1);
 	//mtcp_close(ctx->mctx, sockid);
 }
 /*----------------------------------------------------------------------------*/
@@ -508,11 +508,11 @@ RunServerThread(void *arg)
 			ret = HandleReadEvent(qapp, sockid, ev[i].pri, core);                      
 			if (ret == 0) {
             	/* connection closed by remote host */
-                CloseConnection(qapp, sockid);
+                qstack_closeConn(qapp, sockid);
 			} else if (ret < 0) {
                 /* if not EAGAIN, it's an error */                                    
                 if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
-					CloseConnection(qapp, sockid);
+					qstack_closeConn(qapp, sockid);
                 }
 			}
 		} else if (ev[i].events & Q_EPOLLOUT) {

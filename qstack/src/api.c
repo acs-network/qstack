@@ -699,7 +699,7 @@ get_num_server()
     return CONFIG.app_thread;
 }
 
-struct qstack_conf*
+struct qstack_config*
 qstack_getconf(char *cfg_file)
 {
 	int ret; 

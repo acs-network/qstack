@@ -304,7 +304,7 @@ get_max_concurrency();
 int
 get_num_server();
 
-struct qstack_conf*
+struct qstack_config*
 qstack_getconf(char *cfg_file);
 
 static inline void
