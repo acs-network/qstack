@@ -29,8 +29,8 @@
 #include <sched.h>  
 #include <errno.h>
 /******************************************************************************/
-#include "typical_macro_echo.h"
-//#include "typical_macro_iotepserver.h"
+//#include "typical_macro_echo.h"
+#include "typical_macro.h"
 /******************************************************************************/
 /* default macros */
 #ifndef MAX_CORE_NUM
