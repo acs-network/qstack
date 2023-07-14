@@ -1012,13 +1012,11 @@ show_help(void)
 char *b = TEXT_SSL " ("__DATE__ " " __TIME__ ")" \
 " - a fast echo webserver\n" \
 "usage:\n" \
-" -a <#cpus> number of cpu cores that applications will use\n" \
-" -s <#cpus> number of cpu cores that qstack will use\n" \
-" -p 		 enable the server print " \
-" -w 		 start with redis warmup " \
-" -i 		 set host ip address " \
-" -f 		 set driver_priority flag offset to TCP header(32 as default) " \
-" -h         show this help\n" \
+" -p 		 enable the server print\n" \
+" -w 		 worker number distributed by per server\n" \
+" -i 		 the payload offset(bytes) compared to TCP Ethernet head(32 as default)\n" \
+" -f 		 the configuration file, i.e. iotepserver.conf\n" \
+" -h         	 show this help\n" \
 "\n"
 ;
 #undef TEXT_SSL
@@ -1048,13 +1046,6 @@ main(int argc, char **argv)
     worker_per_server = WORKER_PER_SERVER;	
 	while(-1 != (o = getopt(argc, argv, "s:a:p:w:i:f:h"))){
 		switch(o) {
-		case 's':
-			core_stack = get_num(optarg);
-			CONFIG.stack_thread = core_stack;
-			break;
-		case 'a':
-			core_server = get_num(optarg);
-			break;
 		case 'p':
 			core_print = 1;
 			break;

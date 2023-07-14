@@ -596,12 +596,10 @@ show_help(void)
 char *b = TEXT_SSL " ("__DATE__ " " __TIME__ ")" \
 " - a fast echo webserver\n" \
 "usage:\n" \
-" -a <#cpus> number of cpu cores that applications will use\n" \
-" -s <#cpus> number of cpu cores that qstack will use\n" \
-" -p 		 enable the server print " \
-" -l 		 set the low-priority task delay " \
-" -d 		 set the high-priority task delay " \
-" -h         show this help\n" \
+" -f 		 the configuration file, i.e.echo_server.conf\n" \
+" -l 		 set the low-priority task delay\n" \
+" -d 		 set the high-priority task delay\n" \
+" -h         	 show this help\n" \
 "\n"
 ;
 #undef TEXT_SSL
