@@ -110,7 +110,7 @@
 
 extern void coctx_swap( qcoctx_t *,qcoctx_t* ) asm("coctx_swap");
 
-static qCoEnv_t *q_CoEnvPerThread[ 204800 ] = { 0 };
+static qCoEnv_t *q_CoEnvPerThread[ROSTACK_SIZE] = { 0 };
 
 /**
  * get the current thread pid
@@ -143,7 +143,7 @@ static pid_t GetPid()
 #endif
 
     }
-    return tid;
+    return (tid % ROSTACK_SIZE);
 
 }
 

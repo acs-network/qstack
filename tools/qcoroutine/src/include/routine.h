@@ -82,6 +82,8 @@
 struct qCoroutine;
 typedef struct qCoroutine qCoroutine_t;
 
+#define ROSTACK_SIZE 204800
+
 struct qCoSpec
 {
 	void *value;
