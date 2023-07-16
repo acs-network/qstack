@@ -314,7 +314,7 @@ static inline uint16_t
 cal_orig_stackid_from_fgid(uint16_t fg_id)
 {
 	// TODO: support for dynamic stack num
-	return fg_id % CONFIG.num_stacks;
+	return fg_id % CONFIG.stack_thread;
 }
 /******************************************************************************/
 void

@@ -148,13 +148,13 @@ check_stream_event_validation(tcp_stream_t cur_stream,
 static inline int
 event_dest(int stack_id, tcp_stream_t cur_stream, int pri)
 {
-//	return cur_stream->id % CONFIG.num_servers;
+//	return cur_stream->id % CONFIG.app_thread;
 	uint8_t ret = cur_stream->socket->default_app;
 	if (ret == (uint8_t)-1) {
-		if (CONFIG.num_stacks == CONFIG.num_servers) {
+		if (CONFIG.stack_thread == CONFIG.app_thread) {
 			ret = stack_id;
 		} else {
-			ret = cur_stream->id % CONFIG.num_servers;
+			ret = cur_stream->id % CONFIG.app_thread;
 		}
 		cur_stream->socket->default_app = ret;
 	}

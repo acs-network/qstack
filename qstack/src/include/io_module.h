@@ -112,7 +112,7 @@ io_get_swmbuf(int core_id, int ifidx);
 /**
  * get a free mbuf for user to send out a packet
  *
- * @param core_id 	application context core id
+ * @param app 	    application context 
  * 					in 20181205 new  version is the target core id
  * @param ifidx 	NIC port
  *
@@ -122,7 +122,7 @@ io_get_swmbuf(int core_id, int ifidx);
  * @note remember to write pkt_len and data_len before send out mbuf!
  */ 
 mbuf_t
-io_get_uwmbuf(int core_id, int ifidx);
+io_get_uwmbuf(qapp_t app, int ifidx);
 
 /**
  * get a free mbuf to be writen and sent out
@@ -136,11 +136,13 @@ io_get_uwmbuf(int core_id, int ifidx);
  * 	return a writable mbuf if success; otherwise return NULL
  */
 static inline mbuf_t
-io_get_wmbuf(int core_id, uint8_t **buff, int *max_len, int hold)
+io_get_wmbuf(qapp_t app, uint8_t **buff, int *max_len, int hold)
 {
 	mbuf_t mbuf;
+	int core_id;
+    core_id = app->core_id;
 	if (hold) {
-		mbuf = io_get_uwmbuf(core_id, 0);
+		mbuf = io_get_uwmbuf(app, 0);
 	} else {
 		mbuf = io_get_swmbuf(core_id, 0);
 	}

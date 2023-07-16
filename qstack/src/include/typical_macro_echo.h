@@ -31,7 +31,7 @@
 #define MEM_SCALE		4		///< use less memory of 2^MEM_SCALE
 /******************************************************************************/
 //#define SHARED_NOTHING_MODE			
-#define ECHO_RESPONSE_ALL
+//#define ECHO_RESPONSE_ALL
 #define STATISTIC_STATE_DETAIL			1	///< detail statistic
 /******************************************************************************/
 #endif //#ifdef __TYPICAL_MACRO_ECHO_H_

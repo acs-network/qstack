@@ -269,8 +269,8 @@ q_listen(qapp_t app, int sockid, int backlog)
 	listener->port = ntohs(listener->socket->saddr.sin_port);
 	listener->accept_point = 0;
 	
-	for (i=0; i<CONFIG.num_servers; i++) {
-		streamq_init(&listener->acceptq[i],CONFIG.num_stacks, backlog);
+	for (i=0; i<CONFIG.app_thread; i++) {
+		streamq_init(&listener->acceptq[i],CONFIG.stack_thread, backlog);
 	}
 	
 	socket->listener = listener;
@@ -300,7 +300,7 @@ q_accept(qapp_t app, int sockid, struct sockaddr *addr, socklen_t *addrlen)
 
 	TRACE_CHECKP("q_accept() was called @ Core %d @ Server %d\n", 
 			app->core_id, app->app_id);
-	if (app->app_id >= CONFIG.num_servers) {
+	if (app->app_id >= CONFIG.app_thread) {
 		TRACE_EXCP("Server id %d out of range.\n", app->app_id);
 		errno = EBADF;
 		return -1;
@@ -362,7 +362,7 @@ q_accept(qapp_t app, int sockid, struct sockaddr *addr, socklen_t *addrlen)
 		*addrlen = sizeof(struct sockaddr_in);
 	}
 
-	DSTAT_ADD(get_global_ctx()->accepted_num[app->core_id], 1);
+	DSTAT_ADD(get_global_ctx()->accepted_num[app->app_id], 1);
 	return accepted->socket->id;
 }
 
@@ -456,7 +456,7 @@ q_recv(qapp_t app, int sockid, char **buf, ssize_t *len, uint8_t flags)
 	
 	TRACE_CHECKP("q_recv() was called @ Core %d @ Socket %d\n", 
 			app->core_id, sockid);
-	DSTAT_ADD(get_global_ctx()->recv_called_num[app->core_id], 1);
+	DSTAT_ADD(get_global_ctx()->recv_called_num[app->app_id], 1);
 	if (sockid < 0 || sockid >= CONFIG.max_concurrency) {
 		TRACE_EXCP("Socket id %d out of range.\n", sockid);
 		*len = -1;
@@ -494,7 +494,7 @@ q_recv(qapp_t app, int sockid, char **buf, ssize_t *len, uint8_t flags)
 		ret->mbuf_state = MBUF_STATE_RREAD;
 		*buf = mbuf_get_payload_ptr(ret);
 		*len = ret->payload_len;
-		DSTAT_ADD(get_global_ctx()->rmbuf_get_num[app->core_id], 1);
+		DSTAT_ADD(get_global_ctx()->rmbuf_get_num[app->app_id], 1);
 		TRACE_MBUF("mbuf %p received @ Stream %d, seq:%u len:%d priority:%d\n", 
 				ret, cur_stream->id, ret->tcp_seq, *len, ret->priority);
 	} else {
@@ -512,7 +512,7 @@ q_close(qapp_t app, int sockid)
 {
 	int ret;
 	TRACE_CLOSE("q_close() is called @ Socket %d\n", sockid);
-	DSTAT_ADD(get_global_ctx()->close_called_num[app->core_id], 1);
+	DSTAT_ADD(get_global_ctx()->close_called_num[app->app_id], 1);
 
 	if (sockid < 0 || sockid >= CONFIG.max_concurrency) {
 		TRACE_EXCP("Socket id %d out of range.\n", sockid);
@@ -654,12 +654,12 @@ get_rss_core(struct sockaddr_in *saddr, struct sockaddr_in *daddr)
 	tuple.v4.sport = ntohs(daddr->sin_port);
 	//rss = rte_softrss_be((uint32_t *)&tuple, RTE_THASH_V4_L4_LEN, rss_key_be);
 	rss = rte_softrss((uint32_t *)&tuple, RTE_THASH_V4_L4_LEN, default_rss_key);
-	ret = rss % CONFIG.num_stacks;
+	ret = rss % CONFIG.stack_thread;
 	TRACE_CNCT("rss calculate: saddr=%lx, daddr=%lx, sport=%u, dport=%u, "
 			"rss=%u, num_stacks=%u, ret=%u\n", 
 			tuple.v4.src_addr, tuple.v4.dst_addr, 
 			tuple.v4.sport, tuple.v4.dport, 
-			rss, CONFIG.num_stacks, ret);
+			rss, CONFIG.stack_thread, ret);
 	return ret;
 }
 /******************************************************************************/
@@ -696,16 +696,18 @@ get_max_concurrency()
 int
 get_num_server()
 {
-    return CONFIG.num_servers;
+    return CONFIG.app_thread;
 }
 
-void
-qstack_config_init(unsigned stack, unsigned app)
+struct qstack_config*
+qstack_getconf(char *cfg_file)
 {
-    CONFIG.num_cores = stack + app;
-    CONFIG.num_stacks = stack;
-    CONFIG.num_servers = app;
-    CONFIG.num_apps = CONFIG.num_cores;
+	int ret; 
+	ret = load_configuration(cfg_file);		
+	if(ret < 0)
+		return NULL;
+	else
+		return &CONFIG;
 }
 
 /******************************************************************************/

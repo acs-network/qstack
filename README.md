@@ -131,11 +131,42 @@ The iotepserver benchmark requires 1 server, 1 client and 1 monitor.
     
 2. start iotepserver
     ```
-    # cd <qstack_home>/apps/build
-    # ./iotepserver -f 32 -i [host_ip] 2>err
+    # cd <qstack_home>/apps/
+    # vim iotepserver.conf
+
+		# No. of cores setting (enabling this option will override
+		# the `cpu' config for those applications that accept
+		# To start the echo_server, please run command
+		#    ./build/echo_server -f echo_server.conf
+		# To stop the echo_server, just run Ctrl+C
+		# num_cores as command line arguments)
+		# 
+		num_cores = 32
+
+		# The ip address of this host 
+		host_ip = 192.168.78.100/16
+
+		# Maximum concurrency in total (default = 10000)
+		max_concurrency = 14000000
+
+		#The number of stack threads 
+		stack_thread = 4
+
+		#The number of application threads
+		app_thread = 4
+
+		#The core id dedicated for stack info printing
+		stat_print = 31
+
+		#Enable the multi-priority identification and processing 
+		pri_enable = 1
+
+    # cd build
+    # ./iotepserver -f iotepserver.conf -w 4 -i 32 2>err
     ```
-        -f : refers to the TCP header length of requests, used for priority classification of every packet.
-        [host_ip] : refers to the local IP address, and the server listens on the port 80.
+        -f : configuration file
+        -i : refers to the TCP header length of requests, used for priority classification of every packet(32 for default).
+        -w : refers to the worker threads distributed by per app server thread.
 
 ### Client setup and start
 
@@ -190,6 +221,20 @@ We test iotepserver with 10,368,000 concurrent TCP connections on machines of ``
     - Use ctrl+C to force quit.
 
 ## Release note
+
+### Jul 10, 2023
+* **Add the configuration module to make application and qstack parameters configurable in .conf files.**
+
+    Add following files in ``qstack/src``:  
+  - ``config.c``
+  - ``include/config.h``
+
+* **Merge and optimize application oriented APIs, making them more user-friendly for porting.**
+
+### Mar 30, 2023
+* **Fix request drop bug caused by bitfield competition.**
+
+* **Add the callback check in the receiving path to indicate abnormal conditions.**
 
 ### Sep 19, 2022
 * **Updated global macro.**

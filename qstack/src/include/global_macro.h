@@ -30,7 +30,7 @@
 #include <errno.h>
 /******************************************************************************/
 //#include "typical_macro_echo.h"
-#include "typical_macro_iotepserver.h"
+#include "typical_macro.h"
 /******************************************************************************/
 /* default macros */
 #ifndef MAX_CORE_NUM
@@ -274,7 +274,7 @@
 #endif
 /******************************************************************************/
 /* static macros */
-#define MAX_FLOW_PSTACK	MAX_FLOW_NUM/CONFIG.num_stacks	//for every stack thread
+#define MAX_FLOW_PSTACK	MAX_FLOW_NUM/CONFIG.stack_thread	//for every stack thread
 #define MAX_FLOW_PCORE	MAX_FLOW_NUM/CONFIG.num_cores	//for every core
 /******************************************************************************/
 /* macro check */

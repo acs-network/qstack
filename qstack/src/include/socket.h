@@ -75,7 +75,7 @@ typedef struct tcp_listeners *listeners_t;
 #define MAX_SOCKET_NUM	MAX_FLOW_NUM		// socket used for pasitive open
 #define PUB_SOCKET_NUM	0	// public free_socket pool, for positive open 
 //#define MAX_SOCKET_NUM	100000
-#define MAX_SOCKET_PSTACK	(MAX_SOCKET_NUM)/(CONFIG.num_stacks)
+#define MAX_SOCKET_PSTACK	(MAX_SOCKET_NUM)/(CONFIG.stack_thread)
 /******************************************************************************/
 /* data structures */
 enum socket_opts

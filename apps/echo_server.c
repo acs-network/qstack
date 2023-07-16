@@ -145,11 +145,10 @@ struct thread_context
 	struct server_vars *svars;
 };
 /*----------------------------------------------------------------------------*/
-struct sthread_args{
-	int id;
-    int core;
+struct app_args{
+	int efd;
 	int listener;
-    struct thread_context *ctx;
+    qapp_t qapp;
 };
 /*----------------------------------------------------------------------------*/
 struct app_buffer{
@@ -161,7 +160,7 @@ static int num_cores;
 static int core_limit;
 static int nb_processors;
 static pthread_t app_thread[MAX_CPUS];
-static struct sthread_args server_thread[MAX_CPUS];
+static struct app_args info[MAX_CPUS];
 static int done[MAX_CPUS];
 static inline uint32_t
 q_virtual_process(uint64_t delay)
@@ -245,15 +244,15 @@ CleanServerVariable(struct server_vars *sv)
 }
 /*----------------------------------------------------------------------------*/
 void 
-CloseConnection(struct thread_context *ctx, int sockid, struct server_vars *sv)
+qstack_closeConn(qapp_t qapp, int sockid)
 {
 //	qepoll_ctl(ctx->qapp->app_id, sockid, Q_EPOLL_CTL_DEL, GetTickMS(), NULL);
-	qepoll_ctl(0, sockid, Q_EPOLL_CTL_DEL, GetTickMS(), NULL);
+	qepoll_ctl(0, Q_EPOLL_CTL_DEL, sockid, NULL, -1);
 	//mtcp_close(ctx->mctx, sockid);
 }
 /*----------------------------------------------------------------------------*/
 static int 
-SendUntilAvailable(struct thread_context *ctx, int sockid, struct server_vars *sv)
+SendUntilAvailable(qapp_t qapp, int sockid, struct server_vars *sv)
 {
 	/*int ret;
 	int sent;
@@ -304,7 +303,7 @@ SendUntilAvailable(struct thread_context *ctx, int sockid, struct server_vars *s
 }
 /*----------------------------------------------------------------------------*/
 static int 
-HandleReadEvent(struct thread_context *ctx, int sockid, struct server_vars *sv, int pri, int core_id)
+HandleReadEvent(qapp_t qapp, int sockid, int pri, int core_id)
 {
 	struct qepoll_event ev;
 	char *buf;
@@ -316,13 +315,13 @@ HandleReadEvent(struct thread_context *ctx, int sockid, struct server_vars *sv, 
 	int i, id, ret;
 	uint32_t len, wlen, sndlen; 
     
-	id = ctx->qapp->app_id;
+	id = qapp->app_id;
 	do {
 		/* recieve request */
-		mbuf = q_recv(ctx->qapp, sockid, &buf, &len, 0);
+		mbuf = q_recv(qapp, sockid, &buf, &len, 0);
 		if (!len) {
 			TRACE_EXCP("try to recieve at a closed stream @ Socket %d\n", sockid);
-			q_close(ctx->qapp, sockid);
+			q_close(qapp, sockid);
 		}
 		if (!mbuf) {
 			//fprintf(stderr, "error reading\n");
@@ -335,10 +334,10 @@ HandleReadEvent(struct thread_context *ctx, int sockid, struct server_vars *sv, 
 #endif
 		{
 			/* allocate mbuf for zero-copy send */
-			send_mbuf = q_get_wmbuf(ctx->qapp, &response, &sndlen);
+			send_mbuf = q_get_wmbuf(qapp, &response, &sndlen);
 			if (!send_mbuf) {
 				TRACE_EXCP("failed to get uwmbuf @ Socket %d @ Core %d\n", 
-						sockid, ctx->qapp->core_id);
+						sockid, qapp->core_id);
 				return len;
 			}
 #ifndef HTTP_MODE 
@@ -358,7 +357,7 @@ HandleReadEvent(struct thread_context *ctx, int sockid, struct server_vars *sv, 
 //			mbuf_print_detail(send_mbuf);
 	
 			/* send out the prepared response mbuf */
-			ret = q_send(ctx->qapp, sockid, send_mbuf, len, pri);
+			ret = q_send(qapp, sockid, send_mbuf, len, pri);
 			if (ret != len) {
 				TRACE_EXCP("q_send() failed @Socket %u, "
 						"ret:%d, errno: %d\n", sockid, ret, errno);
@@ -366,10 +365,9 @@ HandleReadEvent(struct thread_context *ctx, int sockid, struct server_vars *sv, 
 		}
 
 		/* free the received mbuf */
-		q_free_mbuf(core_id, mbuf);
+		q_free_mbuf(qapp, mbuf);
 	} while (0);
 
-	CleanServerVariable(sv);
 	/*ev.events = Q_EPOLLIN;
 	ev.sockid = sockid;
 	qepoll_ctl(ctx->core, Q_EPOLL_CTL_MOD, GetTickMS(), &ev);*/                      
@@ -379,15 +377,18 @@ HandleReadEvent(struct thread_context *ctx, int sockid, struct server_vars *sv, 
 
 /*----------------------------------------------------------------------------*/
 int 
-CreateListeningSocket(struct thread_context *ctx)
+qstack_createListenSock(qapp_t *ctx)
 {
 	int listener;
 	struct qepoll_event *ev;
 	struct sockaddr_in saddr;
 	int ret;
+    qapp_t qapp;
+
+    qapp = ctx[0];
 
 	/* create socket and set it as nonblocking */
-	listener = q_socket(ctx->qapp, AF_INET, SOCK_TYPE_STREAM, 0);
+	listener = q_socket(qapp, AF_INET, SOCK_TYPE_STREAM, 0);
 	if (listener < 0) {
 		TRACE_ERR("Failed to create listening socket!\n");
 		return -1;
@@ -397,7 +398,7 @@ CreateListeningSocket(struct thread_context *ctx)
 	saddr.sin_family = AF_INET;
 	saddr.sin_addr.s_addr = INADDR_ANY;
 	saddr.sin_port = htons(80);
-	ret = q_bind(ctx->qapp, listener, 
+	ret = q_bind(qapp, listener, 
 			(struct sockaddr *)&saddr, sizeof(struct sockaddr_in));
 	if (ret < 0) {
 		TRACE_ERR("Failed to bind to the listening socket!\n");
@@ -405,9 +406,9 @@ CreateListeningSocket(struct thread_context *ctx)
 	}
 
 	/* listen (backlog: 4K) */
-	ret = q_listen(ctx->qapp, listener, 10000);
+	ret = q_listen(qapp, listener, 10000);
 	if (ret < 0) {
-		TRACE_ERR("mtcp_listen() failed!\n");
+		TRACE_ERR("q_listen() failed!\n");
 		return -1;
 	}
 
@@ -422,32 +423,31 @@ func_check_req_high(char *message)
 }
 
 int
-AcceptConnection(struct thread_context *ctx, int listener)
+qstack_acceptConn(qapp_t qapp, int efd, int listener)
 {
-	struct server_vars *sv;
 	struct qepoll_event ev;
 	unsigned long long now;
 	int c;
 
-	c = q_accept(ctx->qapp, listener, NULL, NULL);
-	
+	c = q_accept(qapp, listener, NULL, NULL);	
 
 	if (c >= 0) {
-		if (c >= MAX_FLOW_NUM) {
-            TRACE_EXIT("%d larger than %d\n", c, MAX_FLOW_NUM);
+		if (c >= CONFIG.max_concurrency) {
+            TRACE_EXIT("%d larger than %d\n", c, CONFIG.max_concurrency);
 			TRACE_EXCP("Invalid socket id %d.\n", c);
 			return -1;
 		}
-		q_sockset_req_high(c, func_check_req_high);
 
-		sv = &ctx->svars[c];
-		CleanServerVariable(sv);
+		if(CONFIG.pri)
+			q_sockset_req_high(c, func_check_req_high);
+
 		TRACE_CNCT("New connection %d accepted.\n", c);
 		/*ev = CreateQevent(0, ctx->core, c);
 		ev->events = Q_EPOLLIN;
 		now = GetTickMS();*/
 		ev.events = Q_EPOLLIN;
-		qepoll_ctl(ctx->qapp->app_id, c, Q_EPOLL_CTL_ADD, -1, &ev);
+		ev.data.fd = c;
+		qepoll_ctl(efd, Q_EPOLL_CTL_ADD, c, &ev, -1);
 		TRACE_CNCT("Socket %d registered.\n", c);
 
 	} else {
@@ -461,64 +461,72 @@ AcceptConnection(struct thread_context *ctx, int listener)
 void *
 RunServerThread(void *arg)
 {
-	struct sthread_args server_thread = *(struct sthread_args *)arg;
-	int core = server_thread.core;
-	struct thread_context *ctx = server_thread.ctx;
-	int listener;
-	struct qepoll_event *events;
-	int nevents;
-	int i, ret;
+	struct app_args info = *(struct app_args *)arg;
+	qapp_t qapp;
+	int core, app_id;
+	int efd, listener, sockid;
 	struct qepoll_event *ev;
+	int nevents;
+	int i, n, ret;
 	unsigned long long now, prev;
 
-	ctx->qapp = get_core_context(core)->rt_ctx->qapp;
-	int id = ctx->qapp->app_id;
+	qapp = info.qapp;
+	core = qapp->core_id;
+	qapp = get_core_context(core)->rt_ctx->qapp;
+	app_id = qapp->app_id;
               
-	if (!ctx) {
-		TRACE_ERR("Failed to initialize server thread.\n");
+	if (!qapp) {
+		TRACE_ERR("Failed to initialize app thread.\n");
 		return NULL;
 	}
-	listener = server_thread.listener;
-	struct event_mgt evmgt;
-	eventmgt_init(&evmgt, MAX_HIGH_EVENTS, MAX_LOW_EVENTS);
+	efd = info.efd;
+	listener = info.listener;
+	/*struct event_mgt evmgt;
+	eventmgt_init(&evmgt, MAX_HIGH_EVENTS, MAX_LOW_EVENTS);*/
+
+    ev = (struct qepoll_event*)calloc(MAX_LOW_EVENTS, sizeof(struct qepoll_event));
+
 	TRACE_LOG("====================\napp %d start at core %d, pid:%d\n", 
-			ctx->qapp->app_id, core, syscall(SYS_gettid));
+			qapp->app_id, core, syscall(SYS_gettid));
 	
 	while (!done[core]) {
 		/* get one event if avaiable, otherwise yield to other threads */
-		while ((ev = eventmgt_get(id, &evmgt)) == NULL);
-		if (ev->sockid == listener) {
+		//while ((ev = eventmgt_get(app_id, &evmgt)) == NULL);
+        n = qepoll_wait(efd, ev, MAX_LOW_EVENTS, -1);
+		for (i = 0; i < n; i++){ 
+		sockid = ev[i].data.fd;
+		if (sockid == listener) {
 			/* if the event is for the listener, accept connection */
-			ret = AcceptConnection(ctx, listener);
+			ret = qstack_acceptConn(qapp, efd, listener);
 			if (ret < 0)
 				TRACE_EXCP("Accept fails at socket %d\n",listener);
-		} else if (ev->events & Q_EPOLLERR) {
+		} else if (ev[i].events & Q_EPOLLERR) {
 			/* error on the connection */
-			TRACE_EXCP("[CPU %d] Error on socket %d\n", core, ev->sockid);
-		}else if (ev->events & Q_EPOLLIN) {        
+			TRACE_EXCP("[CPU %d] Error on socket %d\n", core, sockid);
+		}else if (ev[i].events & Q_EPOLLIN) {        
 			/* an read event from established connection */
-			ret = HandleReadEvent(ctx, ev->sockid, &ctx->svars[ev->sockid], 
-					ev->pri, core);                      
+			ret = HandleReadEvent(qapp, sockid, ev[i].pri, core);                      
 			if (ret == 0) {
             	/* connection closed by remote host */
-                CloseConnection(ctx, ev->sockid, &ctx->svars[ev->sockid]);
+                qstack_closeConn(qapp, sockid);
 			} else if (ret < 0) {
                 /* if not EAGAIN, it's an error */                                    
                 if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
-					CloseConnection(ctx, ev->data.sockid, 
-							&ctx->svars[ev->data.sockid]);
+					qstack_closeConn(qapp, sockid);
                 }
 			}
-		} else if (ev->events & Q_EPOLLOUT) {
-			struct server_vars *sv = &ctx->svars[ev->data.sockid];
+		} else if (ev[i].events & Q_EPOLLOUT) {
+			/*struct server_vars *sv = svars[ev->data.sockid];
 			if (sv->rspheader_sent) {
-				SendUntilAvailable(ctx, ev->sockid, sv);
+				SendUntilAvailable(qapp, ev->sockid, sv);
 			} else {
 				TRACE_DEBUG("Socket %d: Response header not sent yet.\n", 
 						ev->sockid);
-			}
+			}*/
+			;;
 		} else {
 			assert(0);
+		}
 		}
 	}
 	
@@ -570,9 +578,9 @@ InitializeServerThread(int core)
 
 	ctx->qapp->app_id = core;
 
-	ctx->qapp->core_id = core + CONFIG.num_stacks;
+	ctx->qapp->core_id = core + CONFIG.stack_thread;
 
-    qid = qepoll_create(ctx->qapp, MAX_EVENTS / CONFIG.num_servers);
+    qid = qepoll_create(1);
 	
 	return ctx;
 }
@@ -588,12 +596,10 @@ show_help(void)
 char *b = TEXT_SSL " ("__DATE__ " " __TIME__ ")" \
 " - a fast echo webserver\n" \
 "usage:\n" \
-" -a <#cpus> number of cpu cores that applications will use\n" \
-" -s <#cpus> number of cpu cores that qstack will use\n" \
-" -p 		 enable the server print " \
-" -l 		 set the low-priority task delay " \
-" -d 		 set the high-priority task delay " \
-" -h         show this help\n" \
+" -f 		 the configuration file, i.e.echo_server.conf\n" \
+" -l 		 set the low-priority task delay\n" \
+" -d 		 set the high-priority task delay\n" \
+" -h         	 show this help\n" \
 "\n"
 ;
 #undef TEXT_SSL
@@ -611,42 +617,26 @@ int
 main(int argc, char **argv)
 {
 	struct thread_context *ctx[MAX_CPUS];
-	int core_stack,core_server,core_print;
-	int o, i, qid[10];
-	char *host_ip[16] = {0};
-	
-	num_cores = 23;//GetNumCPUs();
-	
-	// default settings
-	core_stack = MAX_STACK_NUM;
-	CONFIG.num_stacks = core_stack;
-	core_server = MAX_SERVER_NUM;
-	CONFIG.num_servers = core_server;
-	core_print = 1;
+	int stack_num, app_num, core;
+	int o, i, listener;
+	int *efd;
+	struct qstack_config *conf;
+	static char *cfg_file = NULL;
+	qapp_t* qapp;
+		
 	task_delay_h = 0;
 	task_delay_l = 0;
 	
-	while(-1 != (o = getopt(argc, argv, "s:a:p:d:l:i:h"))){
+	while(-1 != (o = getopt(argc, argv, "f:d:l:h"))){
 		switch(o) {
-		case 's':
-			core_stack = get_num(optarg);
-			CONFIG.num_stacks = core_stack;
-			break;
-		case 'a':
-			core_server = get_num(optarg);
-			CONFIG.num_servers = core_server;
-			break;
-		case 'p':
-			core_print = 1;
-			break;
+		case 'f':
+            cfg_file = optarg;
+            break;
 		case 'd':
 			task_delay_h = get_num(optarg);
 			break;
 		case 'l':
 			task_delay_l = get_num(optarg);
-			break;
-		case 'i':
-			strcpy(host_ip, optarg);
 			break;
 		case 'h':
 		default:
@@ -654,48 +644,44 @@ main(int argc, char **argv)
 			return EXIT_SUCCESS;
 		}
 	}
-	CONFIG.num_cores = MAX_CORE_NUM;
+	//config file settings
+	conf = qstack_getconf(cfg_file);
 	
-    pthread_t print_states[core_print];
-    pthread_attr_t attr;
-    cpu_set_t cpus;
-    pthread_attr_init(&attr);
+	qapp = qstack_init();
 	
-	qstack_init(core_stack);
-	fprintf(stderr, "start host at %s\n", host_ip);
-	host_ip_set(host_ip);
-	
-	/* create mtcp context: this will spawn an mtcp thread */
-	q_register_pkt_filter(redis_packet_pri_filter);
+	if(conf->pri)	
+		q_register_pkt_filter(redis_packet_pri_filter);
 
-	for(i = 0; i < core_server; i++) {
-		ctx[i] = InitializeServerThread(i);
+    stack_num = conf->stack_thread;
+	app_num = conf->app_thread;
+	efd = (int*)calloc(app_num, sizeof(int));
+	for(i = 0; i < app_num; i++) {
+    	efd[i] = qepoll_create(1);
 	}
 		
-	int listener = CreateListeningSocket(ctx[0]);
-	
+	listener = qstack_createListenSock(qapp);
 	if (listener < 0) {
 		TRACE_ERR("Failed to create listening socket.\n");
 		exit(-1);
 	}
 
 	TRACE_INFO("Qstack initialization finished.\n");
-
-    for (i = 0; i < core_server; i++) {
-#ifdef SHARED_NOTHING_MODE
-		server_thread[i].core = i;
-#else
-		server_thread[i].core = i + core_stack;
-#endif
-		server_thread[i].ctx = ctx[i];
-		server_thread[i].listener = listener;
+    
+    for (i = 0; i < app_num; i++) {
+		info[i].qapp = qapp[i];
+		info[i].efd  = efd[i];
+		info[i].listener = listener;
 		done[i] = FALSE;
-		qstack_create_app(server_thread[i].core, NULL, RunServerThread, 
-				(void *)&server_thread[i]);
-		app_thread[i] = get_core_context(server_thread[i].core)->rt_ctx->rt_thread;
+#ifdef SHARED_NOTHING_MODE
+		core = i;
+#else
+		core = i + stack_num;
+#endif
+		qstack_thread_create(&app_thread[i], core, &qapp[i], RunServerThread, 
+				(void *)&info[i]);
 	}
 	
-	qstack_join();
+	qstack_thread_join();
 	return 0;
 }
 
