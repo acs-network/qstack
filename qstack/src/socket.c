@@ -75,7 +75,7 @@ socket_table_init()
 	//TODO: put in huge page
 	table->sockets = (socket_t)calloc(MAX_SOCKET_NUM+PUB_SOCKET_NUM, 
 			sizeof(struct socket));
-	for (core=0; core<CONFIG.num_stacks; core++) { // init stack socket pools
+	for (core=0; core<CONFIG.stack_thread; core++) { // init stack socket pools
 		TAILQ_INIT(&table->free_socket[core]);
 		table->free_num[core] = 0;
 		for (; i<(core+1)*chunk_num; i++) {
@@ -110,7 +110,7 @@ socket_alloc(int core_id, int socktype)
 {
 	socket_table_t table = get_global_ctx()->socket_table;
 	socket_t socket;
-	if (core_id >= CONFIG.num_stacks) {
+	if (core_id >= CONFIG.stack_thread) {
 		socket = TAILQ_FIRST(&table->free_socket_public);	
 		if (socket) {
 			TAILQ_REMOVE(&table->free_socket_public, socket, free_link);
