@@ -93,8 +93,8 @@ __create_app_thread(qapp_t qapp, app_func_t app_func, void *args)
 			(void*)qapp);
 }
 
-static inline qapp_t
-create_app_pthread(int core_id, app_func_t app_func, void *args, int type)
+static void
+create_app_pthread(int core_id, qapp_t app_handle, app_func_t app_func, void *args, int type)
 {
 	static int app_id = 0;
 	static int worker_id = 0;
@@ -110,17 +110,7 @@ create_app_pthread(int core_id, app_func_t app_func, void *args, int type)
 	rtmgt_t runtime_mgt = get_runtime_mgt();
     void*test_op = (void *)runtime_mgt;
     
-	// qapp init
-	qapp_t qapp = (qapp_t)calloc(1, sizeof(struct qapp_context));
-	if (type == 0) {
-		// it's an app_thread
-		qapp->app_id = app_id++;
-	} else {
-		// it's an worker_thread
-		qapp->app_id = MAX_APP_NUM - 1 - (worker_id++);
-	}
-
-	qapp->core_id = core_id;
+    qapp_t qapp = app_handle;
 
     test_op = (void *)runtime_mgt;
 	qcore->rt_ctx->qapp = qapp;
@@ -144,16 +134,16 @@ __do_check(rtctx_t rt_ctx, systs_t cur_ts)
 }
 /******************************************************************************/
 /* functions */
-qapp_t
-__qstack_create_app(int core_id, app_func_t app_func, void *args)
+void
+__qstack_create_app(int core_id, qapp_t app_handle, app_func_t app_func, void *args)
 {
-	return create_app_pthread(core_id, app_func, args, 0);
+	create_app_pthread(core_id, app_handle, app_func, args, 0);
 }
 
-qapp_t
-__qstack_create_worker(int core_id, app_func_t app_func, void *args)
+void
+__qstack_create_worker(int core_id, qapp_t app_handle, app_func_t app_func, void *args)
 {
-	return create_app_pthread(core_id, app_func, args, 1);
+	create_app_pthread(core_id, app_handle, app_func, args, 1);
 }
 
 void
