@@ -848,9 +848,34 @@ qstack_thread_start(qstack_t qstack)
 	qstack_main_loop(qstack);
 #endif
 }
+
+qapp_t*
+qstack_app_init(int app_num, int stack_num)
+{
+    int i;
+	qapp_t *qapp;
+	qapp = (qapp_t*)calloc(app_num, sizeof(qapp_t));
+
+    if(qapp){
+    	for (i = 0; i < app_num; i++){
+			qapp[i] = (qapp_t)calloc(1, sizeof(struct qapp_context));
+			if(qapp[i]){
+				qapp[i]->app_id = i;
+                //default core allocation
+				qapp[i]->core_id = i + stack_num;
+			}
+			else
+				TRACE_ERROR("qstack app context %d init failed!", i);
+		}
+	}else
+		TRACE_ERROR("qstack app context pointer init failed!");
+
+    return qapp;
+}
+
 /******************************************************************************/
 /* functions */
-qapp_t* 
+void 
 qstack_init()
 {
 	int i;
@@ -928,40 +953,23 @@ qstack_init()
 #endif
 
 	TRACE_CHECKP("qstack system global_init finish!\n");
-	
-	qapp = (qapp_t*)calloc(app_num, sizeof(qapp_t));
 
-    if(qapp){
-    	for (i = 0; i < app_num; i++){
-			qapp[i] = (qapp_t)calloc(1, sizeof(struct qapp_context));
-			if(qapp[i]){
-				qapp[i]->app_id = i;
-				qapp[i]->core_id = i + stack_num;
-			}
-			else
-				TRACE_ERROR("qstack app context %d init failed!", i);
-		}
-	}else
-		TRACE_ERROR("qstack app context pointer init failed!");
+	qapp = qstack_app_init(app_num, stack_num);
+    CONFIG.qapp = qapp;	
 
 	q_init_manager(stack_num, app_num);
 	
-	return qapp;
 }  
 
 int
-qstack_thread_create(pthread_t *tidp, int core_id, qapp_t *app_handle, app_func_t app_func, 
+qstack_thread_create(pthread_t *tidp, int core_id, qapp_t app_handle, app_func_t app_func, 
 		void *args)
 {
-	qapp_t ret =  __qstack_create_app(core_id, app_func, args);
-	if (unlikely(!ret)) {
+	__qstack_create_app(core_id, app_handle, app_func, args);
+	if (unlikely(!app_handle)) {
 		TRACE_ERR("failed to alloc apoplication thread!\n");
 		return FALSE;
 	} else {
-		if (app_handle != NULL) {
-			// when app_handle is NULL, the user don't need a qapp as return
-			*app_handle = ret;
-		}
 		*tidp = get_core_context(core_id)->rt_ctx->rt_thread;
 		return SUCCESS;
 	}

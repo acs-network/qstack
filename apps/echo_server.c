@@ -622,7 +622,7 @@ main(int argc, char **argv)
 	int *efd;
 	struct qstack_config *conf;
 	static char *cfg_file = NULL;
-	qapp_t* qapp;
+	qapp_t *qapp;
 		
 	task_delay_h = 0;
 	task_delay_l = 0;
@@ -647,7 +647,7 @@ main(int argc, char **argv)
 	//config file settings
 	conf = qstack_getconf(cfg_file);
 	
-	qapp = qstack_init();
+	qstack_init();
 	
 	if(conf->pri)	
 		q_register_pkt_filter(redis_packet_pri_filter);
@@ -658,6 +658,8 @@ main(int argc, char **argv)
 	for(i = 0; i < app_num; i++) {
     	efd[i] = qepoll_create(1);
 	}
+
+    qapp = conf->qapp;
 		
 	listener = qstack_createListenSock(qapp);
 	if (listener < 0) {
@@ -677,7 +679,7 @@ main(int argc, char **argv)
 #else
 		core = i + stack_num;
 #endif
-		qstack_thread_create(&app_thread[i], core, &qapp[i], RunServerThread, 
+		qstack_thread_create(&app_thread[i], core, qapp[i], RunServerThread, 
 				(void *)&info[i]);
 	}
 	
