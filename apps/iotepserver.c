@@ -120,7 +120,7 @@ uint64_t responces;
 int core_stack,core_server,core_print;
 int worker_per_server;
 
-qapp_t qapp_thread; 
+qapp_t *worker_threads; 
 /*----------------------------------------------------------------------------*/
 struct file_cache
 {
@@ -474,7 +474,7 @@ process_requests(void *cluster,struct app_buffer *abuff)
 	
     int id = abuff->id;
     struct ForwardPkt *req = head(forwardQuery,id); 
-    qapp_thread[id].core_id = abuff->core;
+    worker_threads[id]->core_id = abuff->core;
     sockid = req->sock_id;
     core_id = req->core_id;
     //start_time = req->start_time;
@@ -491,7 +491,7 @@ process_requests(void *cluster,struct app_buffer *abuff)
     rs_ts_add(rs_ts_get_from_sock(sockid), REQ_ST_WORKER);
 
     //if (core_id) {
-    mbuf = q_get_wmbuf(qapp_thread + id, &response, &len);
+    mbuf = q_get_wmbuf(worker_threads[id], &response, &len);
     sprintf(response, "HTTP/1.1 %d %s\r\n"
                 "Date: %s\r\n"
                 "Server: Webserver on Middlebox TCP (Ubuntu)\r\n"
@@ -503,7 +503,7 @@ process_requests(void *cluster,struct app_buffer *abuff)
 	mbuf_print_detail(mbuf);
 
 
-	ret = q_send(qapp_thread + id, sockid, mbuf, 146, 0);
+	ret = q_send(worker_threads[id], sockid, mbuf, 146, 0);
 	if  (ret != 146){
 	    TRACE_EXCP("failed q_send() @ Socket %u, ret:%d, errno: %d\n", 
 				sockid, ret, errno);
@@ -1001,6 +1001,24 @@ InitializeServerThread(int core)
 	
 	return ctx;
 }
+
+qapp_t*
+qstack_initWorker(int worker_num, int app_num, int stack_num)
+{
+	int i;
+	qapp_t *worker_threads;
+	qapp_t worker;
+    worker_threads = (qapp_t*)calloc(worker_num, sizeof(struct qapp_context));
+	
+    for (i = 0; i < worker_num; i++){
+		worker_threads[i] = (qapp_t)calloc(1, sizeof(struct qapp_context));
+		worker = worker_threads[i];
+        worker->app_id = app_num + i;
+		worker->core_id = stack_num + app_num + i; 
+	}
+	return worker_threads;
+}
+
 static void
 show_help(void) 
 {
@@ -1039,7 +1057,7 @@ main(int argc, char **argv)
     int *efd;
     struct qstack_config *conf;
     static char *cfg_file = NULL;
-    qapp_t* qapp;
+    qapp_t *qapp;
 	
 	num_cores = 23;//GetNumCPUs();
     core_print = 1;	
@@ -1066,7 +1084,7 @@ main(int argc, char **argv)
 	}
 
     conf = qstack_getconf(cfg_file);
-    qapp = qstack_init();
+    qstack_init();
     
     core_stack = conf->stack_thread;
 	core_server = conf->app_thread;
@@ -1086,12 +1104,13 @@ main(int argc, char **argv)
 		q_register_pkt_filter(redis_packet_pri_filter);
 		
 	
-    qapp_thread = (qapp_t)calloc(nb_processors, sizeof(struct qapp_context));
 
 	efd = (int*)calloc(core_server, sizeof(int));
     for(i = 0; i < core_server; i++) {
         efd[i] = qepoll_create(1);
     }
+	
+	qapp = conf->qapp;
 		
     int listener = qstack_createListenSock(qapp);
     if (listener < 0) {
@@ -1111,15 +1130,18 @@ main(int argc, char **argv)
 #else
         core = i + core_stack;
 #endif
-		qstack_thread_create(&app_thread[i], core, &qapp[i],RunServerThread, (void *)&server_thread[i]); 
+		qstack_thread_create(&app_thread[i], core, qapp[i], RunServerThread, (void *)&server_thread[i]); 
 	}
+    
+	worker_threads = qstack_initWorker(nb_processors, core_server, core_stack);
         
 	for (i = 0; i < nb_processors; i ++) {
         buffer[i].id = i;
 		buffer[i].sid = i / worker_per_server;
 		buffer[i].core = core_stack + core_server + i;
-		worker = qapp_thread + i;
-        qstack_thread_create(&process_requests[i], buffer[i].core, &worker, 
+		worker = worker_threads[i];
+        
+        qstack_thread_create(&process_requests[i], buffer[i].core, worker, 
 			    redis_requests, (void *) &buffer[i]);
     }
 	

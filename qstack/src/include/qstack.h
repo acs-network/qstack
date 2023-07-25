@@ -136,6 +136,8 @@ struct qstack_config
 	struct arp_table sarp_table[STATIC_ARP_NUM];
 	struct arp_table *arp_tables[FULL_ARP_TABLE_SIZE];
 
+    qapp_t *qapp;
+
 	int num_cores;		///< num of total cores
 	int stack_thread;		///< num of stack cores
 	int app_thread;		///< num of application cores
@@ -361,7 +363,7 @@ struct qstack_context_global
  *
  * @return qapp_t*
  */
-qapp_t* 
+void 
 qstack_init();
 
 /**
@@ -369,7 +371,7 @@ qstack_init();
  *
  * @param tidp		    the pointer of created application thread 
  * @param core_id		the core on which the application is goning to run
- * @app_handle[out]		the handle of created application thread
+ * @app_handle  		the handle of created application thread
  * @param app_func		the entry function of application
  * @param args			the args for app_func
  *
@@ -379,7 +381,7 @@ qstack_init();
  *  input app_handle with NULL if don't need a qapp return
  */
 int
-qstack_create_app(pthread_t *tidp, int core_id, qapp_t *app_handle, app_func_t app_func, 
+qstack_create_app(pthread_t *tidp, int core_id, qapp_t app_handle, app_func_t app_func, 
 		void *args);
 
 /**
