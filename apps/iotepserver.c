@@ -1126,11 +1126,11 @@ main(int argc, char **argv)
 		server_thread[i].listener = listener;
 		done[i] = FALSE;
 #ifdef SHARED_NOTHING_MODE
-        core = i;
+        qapp[i]->core_id = i;
 #else
-        core = i + core_stack;
+        qapp[i]->core_id = i + core_stack;
 #endif
-		qstack_thread_create(&app_thread[i], core, qapp[i], RunServerThread, (void *)&server_thread[i]); 
+		qstack_thread_create(&app_thread[i], qapp[i], RunServerThread, (void *)&server_thread[i]); 
 	}
     
 	worker_threads = qstack_initWorker(nb_processors, core_server, core_stack);
@@ -1141,7 +1141,7 @@ main(int argc, char **argv)
 		buffer[i].core = core_stack + core_server + i;
 		worker = worker_threads[i];
         
-        qstack_thread_create(&process_requests[i], buffer[i].core, worker, 
+        qstack_thread_create(&process_requests[i], worker, 
 			    redis_requests, (void *) &buffer[i]);
     }
 	
