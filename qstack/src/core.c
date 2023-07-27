@@ -962,15 +962,15 @@ qstack_init()
 }  
 
 int
-qstack_thread_create(pthread_t *tidp, int core_id, qapp_t app_handle, app_func_t app_func, 
+qstack_thread_create(pthread_t *tidp, qapp_t app_handle, app_func_t app_func, 
 		void *args)
 {
-	__qstack_create_app(core_id, app_handle, app_func, args);
+	__qstack_create_app(app_handle, app_func, args);
 	if (unlikely(!app_handle)) {
 		TRACE_ERR("failed to alloc apoplication thread!\n");
 		return FALSE;
 	} else {
-		*tidp = get_core_context(core_id)->rt_ctx->rt_thread;
+		*tidp = get_core_context(app_handle->core_id)->rt_ctx->rt_thread;
 		return SUCCESS;
 	}
 }

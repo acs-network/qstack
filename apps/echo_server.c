@@ -675,11 +675,11 @@ main(int argc, char **argv)
 		info[i].listener = listener;
 		done[i] = FALSE;
 #ifdef SHARED_NOTHING_MODE
-		core = i;
+		qapp[i]->core_id = i;
 #else
-		core = i + stack_num;
+		qapp[i]->core_id = i + stack_num;
 #endif
-		qstack_thread_create(&app_thread[i], core, qapp[i], RunServerThread, 
+		qstack_thread_create(&app_thread[i], qapp[i], RunServerThread, 
 				(void *)&info[i]);
 	}
 	
