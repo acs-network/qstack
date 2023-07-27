@@ -186,7 +186,6 @@ rt_check(rtctx_t rt_ctx, systs_t cur_ts)
 /**
  * create an application thread, and pin it to the target core
  *
- * @param core_id		the core on which the application is goning to run
  * @param app_handle	the application context handle
  * @param app_func		the entry function of application
  * @param args			the args for app_func
@@ -196,12 +195,12 @@ rt_check(rtctx_t rt_ctx, systs_t cur_ts)
  * 	otherwise return NULL
  */
 void
-__qstack_create_app(int core_id, qapp_t app_handle, app_func_t app_func, void *args); 
+__qstack_create_app(qapp_t app_handle, app_func_t app_func, void *args); 
 
 /**
  * create a worker thread, and pin it to the target core
  *
- * @param core_id		the core on which the application is goning to run
+ * @param app_handle	the application context handle
  * @param app_func		the entry function of application
  * @param args			the args for app_func
  *
@@ -210,7 +209,7 @@ __qstack_create_app(int core_id, qapp_t app_handle, app_func_t app_func, void *a
  * 	otherwise return NULL
  */
 void
-__qstack_create_worker(int core_id, qapp_t app_handle, app_func_t app_func, void *args); 
+__qstack_create_worker(qapp_t app_handle, app_func_t app_func, void *args); 
 
 void
 runtime_init(rtctx_t rt_ctx, int core_id);

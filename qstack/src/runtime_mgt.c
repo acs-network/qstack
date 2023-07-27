@@ -94,11 +94,16 @@ __create_app_thread(qapp_t qapp, app_func_t app_func, void *args)
 }
 
 static void
-create_app_pthread(int core_id, qapp_t app_handle, app_func_t app_func, void *args, int type)
+create_app_pthread(qapp_t app_handle, app_func_t app_func, void *args, int type)
 {
 	static int app_id = 0;
 	static int worker_id = 0;
-	int i;
+	int i, core_id;
+	qapp_t qapp;
+ 
+    qapp = app_handle;
+    core_id = qapp->core_id;
+
 	qcore_t qcore = get_core_context(core_id);
 #if UNSHARED_APP_MODE
 	if (qcore->rt_ctx->qapp != NULL) {
@@ -108,9 +113,7 @@ create_app_pthread(int core_id, qapp_t app_handle, app_func_t app_func, void *ar
 	}
 #endif
 	rtmgt_t runtime_mgt = get_runtime_mgt();
-    void*test_op = (void *)runtime_mgt;
-    
-    qapp_t qapp = app_handle;
+    void*test_op = (void *)runtime_mgt; 
 
     test_op = (void *)runtime_mgt;
 	qcore->rt_ctx->qapp = qapp;
@@ -135,15 +138,15 @@ __do_check(rtctx_t rt_ctx, systs_t cur_ts)
 /******************************************************************************/
 /* functions */
 void
-__qstack_create_app(int core_id, qapp_t app_handle, app_func_t app_func, void *args)
+__qstack_create_app(qapp_t app_handle, app_func_t app_func, void *args)
 {
-	create_app_pthread(core_id, app_handle, app_func, args, 0);
+	create_app_pthread(app_handle, app_func, args, 0);
 }
 
 void
-__qstack_create_worker(int core_id, qapp_t app_handle, app_func_t app_func, void *args)
+__qstack_create_worker(qapp_t app_handle, app_func_t app_func, void *args)
 {
-	create_app_pthread(core_id, app_handle, app_func, args, 1);
+	create_app_pthread(app_handle, app_func, args, 1);
 }
 
 void
